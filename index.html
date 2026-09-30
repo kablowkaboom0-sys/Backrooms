@@ -12,6 +12,10 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #timer{position:absolute;top:10px;right:12px;opacity:.7;letter-spacing:1px}
 #pauseBtn{position:absolute;top:34px;right:12px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#ddd;border:1px solid #777;font:12px monospace}
 #devBtn{position:absolute;top:34px;right:78px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#fff;border:1px solid #777;font:12px monospace}
+#mapPanel{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(7,5,2,.94);color:#eee;z-index:6}
+#mapPanel h1{font-size:24px;letter-spacing:4px;margin:0 0 10px}
+#mapCanvas{width:min(82vw,82vh);height:min(82vw,82vh);image-rendering:pixelated;border:2px solid #777;background:#111}
+#mapClose{margin-top:14px;padding:9px 22px;background:#18130c;color:#eee;border:1px solid #aaa;font:14px monospace}
 #hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);opacity:.45;text-align:center}
 #cross{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border:1px solid rgba(255,255,255,.3);box-sizing:border-box}
 #panel,#end{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(7,5,2,.88);color:#eee;text-align:center;z-index:5}
@@ -41,6 +45,12 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <label>LOOK SENSITIVITY: <span id="sensVal">0.40</span></label>
 <input id="sens" type="range" min="0.10" max="1.00" step="0.05" value="0.40">
 <button id="resume">RESUME</button>
+</div>
+<div id="mapPanel">
+<h1>DEV MAP</h1>
+<canvas id="mapCanvas" width="410" height="410"></canvas>
+<div>WHITE = EXIT &nbsp; • &nbsp; RED = YOU &nbsp; • &nbsp; YELLOW = PATH</div>
+<button id="mapClose">CLOSE MAP</button>
 </div>
 <div id="end">
 <h1>LEVEL COMPLETE</h1><p id="finalTime">TIME: 00:00.0</p><p>You found the way out.</p>
@@ -89,6 +99,26 @@ function reset(){
  document.getElementById('panel').style.display='none';clearKeys();
 }
 function clearKeys(){for(const k in keys)keys[k]=false}
+function drawDevMap(){
+ const mc=document.getElementById('mapCanvas'),mctx=mc.getContext('2d');
+ const cs=mc.width/MW;
+ mctx.clearRect(0,0,mc.width,mc.height);
+ for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){
+  if(map[y][x])mctx.fillStyle='#17120c';
+  else mctx.fillStyle='#c7a95b';
+  mctx.fillRect(x*cs,y*cs,cs,cs);
+ }
+ // Start marker.
+ mctx.fillStyle='#4aa3ff';mctx.fillRect(1*cs+.2*cs,1*cs+.2*cs,.6*cs,.6*cs);
+ // Exit marker.
+ mctx.fillStyle='#fff';mctx.fillRect(exitCell.x*cs+.08*cs,exitCell.y*cs+.08*cs,.84*cs,.84*cs);
+ // Player marker.
+ const ptx=px*cs,pty=py*cs;
+ mctx.fillStyle='#e33';mctx.beginPath();mctx.arc(ptx,pty,Math.max(3,cs*.35),0,Math.PI*2);mctx.fill();
+ mctx.strokeStyle='#f66';mctx.lineWidth=2;mctx.beginPath();
+ mctx.moveTo(ptx,pty);mctx.lineTo(ptx+Math.cos(pa)*cs*1.5,pty+Math.sin(pa)*cs*1.5);mctx.stroke();
+}
+
 function wall(x,y){return x<0||y<0||x>=MW||y>=MH||map[y][x]===1}
 function atExit(x,y){return x===exitCell.x&&y===exitCell.y}
 function move(dt){
@@ -252,6 +282,9 @@ run.onpointerdown=e=>{e.preventDefault();keys.shift=true};run.onpointerup=run.on
 function togglePause(){if(finished)return;paused=!paused;clearKeys();document.getElementById('panel').style.display=paused?'flex':'none'}
 document.getElementById('pauseBtn').onclick=togglePause;
 document.getElementById('devBtn').onclick=devToExit;
+document.getElementById('devBtn').addEventListener('contextmenu',e=>{e.preventDefault();drawDevMap();document.getElementById('mapPanel').style.display='flex'});
+document.getElementById('devBtn').ondblclick=()=>{drawDevMap();document.getElementById('mapPanel').style.display='flex'};
+document.getElementById('mapClose').onclick=()=>document.getElementById('mapPanel').style.display='none';
 document.getElementById('resume').onclick=togglePause;
 document.getElementById('retry').onclick=reset;
 document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
