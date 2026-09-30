@@ -162,11 +162,24 @@ function wallTexture(x,y){
  return [Math.max(0,178+n*18+seam),Math.max(0,151+n*16+seam),Math.max(0,76+n*10+seam)];
 }
 function carpetTexture(x,y){
- const u=Math.floor(x*12),v=Math.floor(y*12);
- const p=((u&1)^((v>>1)&1)^((u>>2)&1));
- const n=texNoise(x,y);
- const fiber=p?8:-9;
- return [Math.max(0,92+n*18+fiber),Math.max(0,18+n*7+fiber*.25),Math.max(0,17+n*7+fiber*.2)];
+ // Fine, irregular carpet fibers: individual low-res pixels rather than large repeating blocks.
+ const gx=Math.floor(x*38),gy=Math.floor(y*38);
+ const n=hash(gx,gy)-.5;
+ const n2=hash(gx*7+19,gy*11+5)-.5;
+ const strand=hash(gx*13+3,gy*17+9);
+ let fiber=n*20+n2*10;
+ // Sparse brighter/darker strands make the surface read as soft, furry carpet.
+ if(strand>.88)fiber+=18;
+ else if(strand<.10)fiber-=14;
+ // A few isolated pixel flecks break up any regularity.
+ const fleck=hash(Math.floor(x*92)+31,Math.floor(y*92)+47);
+ if(fleck>.965)fiber+=24;
+ if(fleck<.025)fiber-=18;
+ return [
+  Math.max(0,108+fiber),
+  Math.max(0,21+fiber*.24),
+  Math.max(0,20+fiber*.20)
+ ];
 }
 function ceilingTexture(x,y){
  const n=texNoise(x,y);
