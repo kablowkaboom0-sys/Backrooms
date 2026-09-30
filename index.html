@@ -166,9 +166,16 @@ function render(){
    const n=hash(x,y);
    let r,gc,b;
    if(hitExit){
-    const edge=Math.abs(x-W/2)/(W/2);
-    const door=edge<.34 && y>top+line*.08 && y<top+line*.96;
-    const glow=Math.max(0,1-edge*1.8);
+    // Project the real exit position into screen space; the door must stay fixed in the world.
+    const ex=exitCell.x+.5,ey=exitCell.y+.5;
+    let da=Math.atan2(ey-py,ex-px)-pa;
+    while(da>Math.PI)da-=Math.PI*2;
+    while(da<-Math.PI)da+=Math.PI*2;
+    const doorCenter=W/2+(Math.tan(da)/Math.tan(FOV/2))*(W/2);
+    const doorHalf=Math.max(2,Math.min(W*.34,line*.30));
+    const edge=Math.abs(x-doorCenter)/doorHalf;
+    const door=edge<1 && y>top+line*.08 && y<top+line*.96;
+    const glow=Math.max(0,1-edge);
     if(door){
      const pulse=.88+.12*Math.sin(performance.now()*.006);
      r=238*pulse+12;gc=238*pulse+12;b=232*pulse+18;
