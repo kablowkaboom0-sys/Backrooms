@@ -17,6 +17,11 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #mapPanel h1{font-size:24px;letter-spacing:4px;margin:0 0 10px}
 #mapCanvas{width:min(82vw,82vh);height:min(82vw,82vh);image-rendering:pixelated;border:2px solid #777;background:#111}
 #mapClose{margin-top:14px;padding:9px 22px;background:#18130c;color:#eee;border:1px solid #aaa;font:14px monospace}
+#startScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#090806;color:#ddd;text-align:center;z-index:10}
+#startScreen h1{font-size:34px;letter-spacing:7px;margin:0 0 8px}
+#startScreen .sub{opacity:.5;letter-spacing:3px;margin-bottom:28px}
+.diff{width:220px;margin:7px;padding:12px;background:#17120c;color:#ddd;border:1px solid #666;font:15px monospace;letter-spacing:2px}
+.diff:hover{background:#272016;border-color:#aaa}
 #hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);opacity:.45;text-align:center}
 #cross{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border:1px solid rgba(255,255,255,.3);box-sizing:border-box}
 #panel,#end{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(7,5,2,.88);color:#eee;text-align:center;z-index:5}
@@ -34,6 +39,13 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </head>
 <body>
 <canvas id="game"></canvas>
+<div id="startScreen">
+<h1>BACKROOMS</h1>
+<div class="sub">LEVEL 0 // CHOOSE DIFFICULTY</div>
+<button class="diff" data-size="21">EASY</button>
+<button class="diff" data-size="31">MEDIUM</button>
+<button class="diff" data-size="41">HARD</button>
+</div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
 <div id="timer">00:00.0</div>
@@ -67,8 +79,12 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d',{alpha:false});
 const W=240,H=135,buf=document.createElement('canvas');buf.width=W;buf.height=H;
 const g=buf.getContext('2d',{alpha:false}),img=g.createImageData(W,H),pix=img.data;
-const FOV=Math.PI/3,MW=41,MH=41;
+const FOV=Math.PI/3;
+let MW=41,MH=41;
 let seed=72631,map,exitCell,px,py,pa,startTime,finished=false,paused=false,sensitivity=.004;
+let gameStarted=false;
+const RENDER_DISTANCE=11.5;
+const FOG_START=4.5;
 const keys={};
 
 function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
@@ -96,6 +112,7 @@ function findExit(){
 }
 function reset(){
  map=makeMap();findExit();px=py=1.5;pa=0;startTime=performance.now();
+
  finished=false;paused=false;document.getElementById('end').style.display='none';
  document.getElementById('panel').style.display='none';clearKeys();
 }
@@ -121,6 +138,11 @@ function drawDevMap(){
 }
 
 function wall(x,y){return x<0||y<0||x>=MW||y>=MH||map[y][x]===1}
+function startGame(size){
+ MW=size;MH=size;gameStarted=true;
+ document.getElementById('startScreen').style.display='none';
+ reset();
+}
 function atExit(x,y){return x===exitCell.x&&y===exitCell.y}
 function move(dt){
  if(paused||finished)return;
@@ -199,15 +221,17 @@ function render(){
   const rx=Math.cos(ra),ry=Math.sin(ra);
   let tx,ty;
   if(y>hz){
-   const depth=Math.min(18,0.72/Math.max(.5,y-hz));
+   const depth=Math.min(RENDER_DISTANCE,0.72/Math.max(.5,y-hz));
    tx=px+rx*depth;ty=py+ry*depth;
-   const q=carpetTexture(tx,ty),fade=Math.max(.25,1-depth*.035);
-   setPix((y*W+x)*4,q[0]*fade,q[1]*fade,q[2]*fade);
+   const q=carpetTexture(tx,ty),fade=Math.max(.18,1-depth*.05);
+   const fog=Math.max(.22,1-Math.max(0,depth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.72);
+   setPix((y*W+x)*4,q[0]*fade*fog,q[1]*fade*fog,q[2]*fade*fog);
   }else{
-   const depth=Math.min(18,0.72/Math.max(.5,hz-y));
+   const depth=Math.min(RENDER_DISTANCE,0.72/Math.max(.5,hz-y));
    tx=px+rx*depth;ty=py+ry*depth;
-   const q=ceilingTexture(tx,ty),fade=Math.max(.3,1-depth*.025);
-   setPix((y*W+x)*4,q[0]*fade,q[1]*fade,q[2]*fade);
+   const q=ceilingTexture(tx,ty),fade=Math.max(.22,1-depth*.04);
+   const fog=Math.max(.24,1-Math.max(0,depth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.68);
+   setPix((y*W+x)*4,q[0]*fade*fog,q[1]*fade*fog,q[2]*fade*fog);
   }
  }
  // Raycast walls.
@@ -230,6 +254,10 @@ function render(){
    dist=Math.max(.05,ex*rx+ey*ry);
   }
   dist=Math.max(.05,dist*Math.cos(ra-pa));
+  if(dist>RENDER_DISTANCE){
+   for(let y=0;y<H;y++)setPix((y*W+x)*4,34,29,20);
+   continue;
+  }
   const line=Math.min(H*2,H/dist*.92),top=(H-line)/2;
   const shade=Math.max(8,78-dist*5)*(side?.82:1);
   for(let y=Math.max(0,top|0);y<Math.min(H,(top+line)|0);y++){
@@ -255,8 +283,9 @@ function render(){
     }
    }else{
     const wt=wallTexture(mx+(side?0.5:0),my+(side?0:0.5));
-    const light=Math.max(.18,Math.min(1,shade/78));
-    r=wt[0]*light;gc=wt[1]*light;b=wt[2]*light;
+    const light=Math.max(.12,Math.min(1,shade/82));
+    const fog=Math.max(.25,1-Math.max(0,dist-FOG_START)/(RENDER_DISTANCE-FOG_START)*.74);
+    r=wt[0]*light*fog;gc=wt[1]*light*fog;b=wt[2]*light*fog;
    }
    setPix((y*W+x)*4,r,gc,b);
   }
@@ -313,13 +342,15 @@ document.getElementById('retry').onclick=reset;
 document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
 
 let last=performance.now(),acc=0;
+document.querySelectorAll('.diff').forEach(btn=>btn.onclick=()=>startGame(+btn.dataset.size));
+
 function loop(now){
  const dt=Math.min(.1,(now-last)/1000);last=now;acc+=dt;
  if(acc>=1/30){acc-=1/30;move(1/30);render();if(!paused&&!finished)document.getElementById('timer').textContent=fmt((now-startTime)/1000)}
  requestAnimationFrame(loop);
 }
 function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
-addEventListener('resize',resize);resize();reset();requestAnimationFrame(loop);
+addEventListener('resize',resize);resize();requestAnimationFrame(loop);
 </script>
 </body>
 </html>
