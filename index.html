@@ -125,19 +125,43 @@ function devToExit(){
 }
 function fmt(t){const m=t/60|0,s=t%60|0,d=t*10%10|0;return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+d}
 function hash(x,y){let n=((x*374761393+y*668265263)>>>0);n=(n^(n>>13))*1274126177>>>0;n^=n>>16;return (n>>>0)/4294967296}
+function texNoise(x,y){return hash(Math.floor(x*8),Math.floor(y*8))-.5}
+function wallTexture(x,y){
+ const n=texNoise(x,y);
+ const seam=(Math.floor(y*2)%2===0)?-4:0;
+ return [Math.max(0,178+n*18+seam),Math.max(0,151+n*16+seam),Math.max(0,76+n*10+seam)];
+}
+function carpetTexture(x,y){
+ const n=texNoise(x,y);
+ const weave=((Math.floor(x*7)+Math.floor(y*7))&1)?5:-5;
+ return [Math.max(0,92+n*28+weave),Math.max(0,18+n*8),Math.max(0,17+n*8)];
+}
+function ceilingTexture(x,y){
+ const n=texNoise(x,y);
+ const tile=((Math.floor(x*3)+Math.floor(y*3))&1)?3:-3;
+ return [Math.max(0,178+n*18+tile),Math.max(0,151+n*16+tile),Math.max(0,76+n*10+tile)];
+}
 function setPix(i,r,g,b){pix[i]=r;pix[i+1]=g;pix[i+2]=b;pix[i+3]=255}
 
 function render(){
  const hz=H*.51;
- // Warm yellow ceiling and worn yellow-brown carpet, using direct pixels instead of thousands of draw calls.
+ // Texture the ceiling and carpet in world space so the pattern stays attached to the level instead of burning into the screen.
  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
-  const n=hash(x,y);
-  if(y<hz){
-   const v=Math.max(15,55+(hz-y)*.38+(n-.5)*12);
-   setPix((y*W+x)*4,v+10,v+7,v-5);
+  if(y===hz)continue;
+  const cam=(x/W-.5)*2;
+  const ra=pa+Math.atan(cam*Math.tan(FOV/2));
+  const rx=Math.cos(ra),ry=Math.sin(ra);
+  let tx,ty;
+  if(y>hz){
+   const depth=Math.min(18,0.72/Math.max(.5,y-hz));
+   tx=px+rx*depth;ty=py+ry*depth;
+   const q=carpetTexture(tx,ty),fade=Math.max(.25,1-depth*.035);
+   setPix((y*W+x)*4,q[0]*fade,q[1]*fade,q[2]*fade);
   }else{
-   const v=Math.max(12,62-(y-hz)*.50+(n-.5)*15);
-   setPix((y*W+x)*4,v+12,v+5,v-7);
+   const depth=Math.min(18,0.72/Math.max(.5,hz-y));
+   tx=px+rx*depth;ty=py+ry*depth;
+   const q=ceilingTexture(tx,ty),fade=Math.max(.3,1-depth*.025);
+   setPix((y*W+x)*4,q[0]*fade,q[1]*fade,q[2]*fade);
   }
  }
  // Raycast walls.
@@ -184,8 +208,9 @@ function render(){
      r=v+12;gc=v+9;b=v+2;
     }
    }else{
-    const v=shade+(n-.5)*14;
-    r=Math.max(0,v+22);gc=Math.max(0,v+17);b=Math.max(0,v-5);
+    const wt=wallTexture(mx+(side?0.5:0),my+(side?0:0.5));
+    const light=Math.max(.18,Math.min(1,shade/78));
+    r=wt[0]*light;gc=wt[1]*light;b=wt[2]*light;
    }
    setPix((y*W+x)*4,r,gc,b);
   }
