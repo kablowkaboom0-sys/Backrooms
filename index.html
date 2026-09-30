@@ -83,8 +83,8 @@ const FOV=Math.PI/3;
 let MW=41,MH=41;
 let seed=72631,map,exitCell,px,py,pa,startTime,finished=false,paused=false,sensitivity=.004;
 let gameStarted=false;
-const RENDER_DISTANCE=11.5;
-const FOG_START=4.5;
+const RENDER_DISTANCE=13.5;
+const FOG_START=6.0;
 const keys={};
 
 function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
@@ -212,6 +212,11 @@ function ceilingTexture(x,y){
 function setPix(i,r,g,b){pix[i]=r;pix[i+1]=g;pix[i+2]=b;pix[i+3]=255}
 
 function render(){
+ if(!gameStarted||!map){
+  ctx.fillStyle='#090806';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  return;
+ }
  const hz=H*.51;
  // Texture the ceiling and carpet in world space so the pattern stays attached to the level instead of burning into the screen.
  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
@@ -224,13 +229,13 @@ function render(){
    const depth=Math.min(RENDER_DISTANCE,0.72/Math.max(.5,y-hz));
    tx=px+rx*depth;ty=py+ry*depth;
    const q=carpetTexture(tx,ty),fade=Math.max(.18,1-depth*.05);
-   const fog=Math.max(.22,1-Math.max(0,depth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.72);
+   const fog=Math.max(.34,1-Math.max(0,depth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.58);
    setPix((y*W+x)*4,q[0]*fade*fog,q[1]*fade*fog,q[2]*fade*fog);
   }else{
    const depth=Math.min(RENDER_DISTANCE,0.72/Math.max(.5,hz-y));
    tx=px+rx*depth;ty=py+ry*depth;
    const q=ceilingTexture(tx,ty),fade=Math.max(.22,1-depth*.04);
-   const fog=Math.max(.24,1-Math.max(0,depth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.68);
+   const fog=Math.max(.36,1-Math.max(0,depth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.54);
    setPix((y*W+x)*4,q[0]*fade*fog,q[1]*fade*fog,q[2]*fade*fog);
   }
  }
@@ -283,8 +288,8 @@ function render(){
     }
    }else{
     const wt=wallTexture(mx+(side?0.5:0),my+(side?0:0.5));
-    const light=Math.max(.12,Math.min(1,shade/82));
-    const fog=Math.max(.25,1-Math.max(0,dist-FOG_START)/(RENDER_DISTANCE-FOG_START)*.74);
+    const light=Math.max(.16,Math.min(1,shade/82));
+    const fog=Math.max(.38,1-Math.max(0,dist-FOG_START)/(RENDER_DISTANCE-FOG_START)*.56);
     r=wt[0]*light*fog;gc=wt[1]*light*fog;b=wt[2]*light*fog;
    }
    setPix((y*W+x)*4,r,gc,b);
