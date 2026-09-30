@@ -138,6 +138,10 @@ function render(){
    if(atExit(mx,my)){hitExit=true;break}
   }
   let dist=side===0?(mx-px+(1-sx)/2)/(rx||1e-9):(my-py+(1-sy)/2)/(ry||1e-9);
+  if(hitExit){
+   const ex=exitCell.x+.5-px,ey=exitCell.y+.5-py;
+   dist=Math.max(.05,ex*rx+ey*ry);
+  }
   dist=Math.max(.05,dist*Math.cos(ra-pa));
   const line=Math.min(H*2,H/dist*.92),top=(H-line)/2;
   const shade=Math.max(8,78-dist*5)*(side?.82:1);
@@ -145,8 +149,16 @@ function render(){
    const n=hash(x,y);
    let r,gc,b;
    if(hitExit){
-    const v=Math.max(12,48+(n-.5)*10-((x<3||x>W-4||y<3)?18:0));
-    r=v;gc=Math.max(8,v-18);b=Math.max(4,v-29);
+    const edge=Math.abs(x-W/2)/(W/2);
+    const door=edge<.34 && y>top+line*.08 && y<top+line*.96;
+    const glow=Math.max(0,1-edge*1.8);
+    if(door){
+     const pulse=.88+.12*Math.sin(performance.now()*.006);
+     r=238*pulse+12;gc=238*pulse+12;b=232*pulse+18;
+    }else{
+     const v=Math.max(10,62+glow*75+(n-.5)*12);
+     r=v+12;gc=v+9;b=v+2;
+    }
    }else{
     const v=shade+(n-.5)*14;
     r=Math.max(0,v+22);gc=Math.max(0,v+17);b=Math.max(0,v-5);
