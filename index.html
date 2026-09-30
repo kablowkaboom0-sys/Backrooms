@@ -1,6 +1,207 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>BACKROOMS // LEVEL 0</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;font-family:monospace;touch-action:none}#game{width:100%;height:100%;display:block;image-rendering:pixelated;image-rendering:crisp-edges}#ui{position:fixed;inset:0;pointer-events:none;color:#ddd;font-size:12px;text-shadow:1px 1px #000}#title{position:absolute;top:10px;left:12px;opacity:.55;letter-spacing:2px}#timer{position:absolute;top:10px;right:12px;opacity:.7}#pauseBtn{position:absolute;top:34px;right:12px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#ddd;border:1px solid #777;font:12px monospace}#hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);opacity:.45;text-align:center}#cross{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border:1px solid rgba(255,255,255,.3);box-sizing:border-box}#panel,#end{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(7,5,2,.88);color:#eee;text-align:center;z-index:5}#panel h1,#end h1{font-size:30px;letter-spacing:5px;margin:0 0 15px}#panel label{margin:8px}input[type=range]{width:220px}button{cursor:pointer}#resume,#retry{margin-top:15px;padding:10px 24px;border:1px solid #aaa;background:#18130c;color:#eee;font:14px monospace}#touch{position:fixed;inset:0;display:none;pointer-events:none}.pad{position:absolute;bottom:22px;width:62px;height:62px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);color:#ddd;font:18px monospace;pointer-events:auto;border-radius:8px}#up{left:78px;bottom:88px}#down{left:78px;bottom:22px}#left{left:12px;bottom:22px}#right{left:144px;bottom:22px}#turnL{right:144px}#turnR{right:78px}#run{right:12px;bottom:88px}@media(pointer:coarse){#touch{display:block}#hint{display:none}}</style></head><body><canvas id="game"></canvas><div id="ui"><div id="title">BACKROOMS // LEVEL 0</div><div id="timer">00:00.0</div><button id="pauseBtn">PAUSE</button><div id="cross"></div><div id="hint">WASD / ARROWS TO MOVE • MOUSE OR Q/E TO LOOK • FIND THE EXIT</div></div><div id="panel"><h1>PAUSED</h1><label>LOOK SENSITIVITY: <span id="sensVal">0.40</span></label><input id="sens" type="range" min="0.10" max="1.00" step="0.05" value="0.40"><button id="resume">RESUME</button></div><div id="end"><h1>LEVEL COMPLETE</h1><p id="finalTime">TIME: 00:00.0</p><p>You found the way out.</p><button id="retry">RETRY</button></div><div id="touch"><button class="pad" id="up">▲</button><button class="pad" id="down">▼</button><button class="pad" id="left">◀</button><button class="pad" id="right">▶</button><button class="pad" id="turnL">↶</button><button class="pad" id="turnR">↷</button><button class="pad" id="run">RUN</button></div><script>'use strict';
-const canvas=document.getElementById('game'),ctx=canvas.getContext('2d',{alpha:false}),W=240,H=135,buf=document.createElement('canvas');buf.width=W;buf.height=H;const g=buf.getContext('2d',{alpha:false});g.imageSmoothingEnabled=false;const FOV=Math.PI/3,MW=41,MH=41;let seed=72631,map,exitCell,px,py,pa,startTime,finished=false,paused=false,sensitivity=.004,keys={};
-function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}function makeMap(){seed=72631;const m=Array.from({length:MH},()=>Array(MW).fill(1));function c(x,y){m[y][x]=0;let d=[[2,0],[-2,0],[0,2],[0,-2]];for(let i=3;i;i--){let j=rnd()*(i+1)|0;[d[i],d[j]]=[d[j],d[i]]}for(let [dx,dy]of d){let X=x+dx,Y=y+dy;if(X>0&&X<MW-1&&Y>0&&Y<MH-1&&m[Y][X]){m[y+dy/2][x+dx/2]=0;c(X,Y)}}}c(1,1);return m}function findExit(){let d=Array.from({length:MH},()=>Array(MW).fill(-1)),q=[[1,1]],far=[1,1];d[1][1]=0;for(let i=0;i<q.length;i++){let[x,y]=q[i];if(d[y][x]>d[far[1]][far[0]])far=[x,y];for(let[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){let X=x+dx,Y=y+dy;if(X>=0&&X<MW&&Y>=0&&Y<MH&&mape(X,Y)&&d[Y][X]<0){d[Y][X]=d[y][x]+1;q.push([X,Y])}}}exitCell={x:far[0],y:far[1]}}function mape(x,y){return map[y][x]===0}function reset(){map=makeMap();findExit();px=py=1.5;pa=0;startTime=performance.now();finished=paused=false;document.getElementById('end').style.display='none';document.getElementById('panel').style.display='none'}function wall(x,y){return x<0||y<0||x>=MW||y>=MH||map[y][x]}function exit(x,y){return x===exitCell.x&&y===exitCell.y}function move(dt){if(paused||finished)return;let f=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0),s=(keys.d?1:0)-(keys.a?1:0);if(keys.q||keys.arrowleft)pa-=dt*1.8;if(keys.e||keys.arrowright)pa+=dt*1.8;let sp=2.15*(keys.shift?1.55:1),ca=Math.cos(pa),sa=Math.sin(pa),dx=(ca*f-sa*s)*sp*dt,dy=(sa*f+ca*s)*sp*dt;if(!wall(Math.floor(px+dx+.2*Math.sign(dx)),Math.floor(py)))px+=dx;if(!wall(Math.floor(px),Math.floor(py+dy+.2*Math.sign(dy))))py+=dy;if(exit(Math.floor(px),Math.floor(py)))finish()}function finish(){finished=true;document.getElementById('finalTime').textContent='TIME: '+fmt((performance.now()-startTime)/1000);document.getElementById('end').style.display='flex'}function fmt(t){let m=t/60|0,s=t%60|0,d=t*10%10|0;return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+d}function noise(x,y,b){let n=((x*374761393+y*668265263)>>>0);n=(n^(n>>13))*1274126177>>>0;n^=n>>16;return b+(n%17-8)}
-function render(){let hz=H*.51;for(let y=0;y<H;y++)for(let x=0;x<W;x++){if(y<hz){let v=24+(hz-y)*.45+noise(x*2,y*2,0)*.18;g.fillStyle=`rgb(${v},${v-2},${v-7})`}else{let v=Math.max(7,47-(y-hz)*.48+noise(x*3,y*2,0)*.28);g.fillStyle=`rgb(${v},${Math.max(5,v-7)},${Math.max(3,v-13)})`}g.fillRect(x,y,1,1)}for(let x=0;x<W;x++){let cam=(x/W-.5)*2,ra=pa+Math.atan(cam*Math.tan(FOV/2)),rx=Math.cos(ra),ry=Math.sin(ra),mx=Math.floor(px),my=Math.floor(py),side=0,hit=false,ddx=Math.abs(1/(rx||1e-9)),ddy=Math.abs(1/(ry||1e-9)),sx=rx<0?-1:1,sy=ry<0?-1:1,sdx=rx<0?(px-mx)*ddx:(mx+1-px)*ddx,sdy=ry<0?(py-my)*ddy:(my+1-py)*ddy;for(let i=0;i<120;i++){if(sdx<sdy){sdx+=ddx;mx+=sx;side=0}else{sdy+=ddy;my+=sy;side=1}if(wall(mx,my))break;if(exit(mx,my)){hit=true;break}}let dist=side===0?(mx-px+(1-sx)/2)/(rx||1e-9):(my-py+(1-sy)/2)/(ry||1e-9);dist=Math.max(.05,dist*Math.cos(ra-pa));let line=Math.min(H*2,H/dist*.92),top=(H-line)/2,shade=Math.max(8,78-dist*5)*(side?.82:1);for(let y=Math.max(0,top|0);y<Math.min(H,(top+line)|0);y++){if(hit){let v=Math.max(12,48+noise(x,y,0)*.7-((x<3||x>W-4||y<3)?18:0));g.fillStyle=`rgb(${v},${Math.max(7,v-19)},${Math.max(4,v-29)}`}else{let n=noise(x,y,shade),seam=((x+3)%31===0||y%47===0)?-9:0;g.fillStyle=`rgb(${Math.max(0,n+seam+20)},${Math.max(0,n+seam+16)},${Math.max(0,n+seam-8)}`}g.fillRect(x,y,1,1)}}ctx.imageSmoothingEnabled=false;ctx.drawImage(buf,0,0,canvas.width,canvas.height)}
-addEventListener('keydown',e=>{if(e.key.toLowerCase()==='escape'||e.key.toLowerCase()==='p')togglePause();keys[e.key.toLowerCase()]=true});addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);let drag=false,lastX=0;canvas.onpointerdown=e=>{if(paused||finished)return;drag=true;lastX=e.clientX;canvas.setPointerCapture(e.pointerId)};canvas.onpointerup=()=>drag=false;canvas.onpointercancel=()=>drag=false;canvas.onpointermove=e=>{if(drag&&!paused){pa+=(e.clientX-lastX)*sensitivity;lastX=e.clientX}};const tm={up:'w',down:'s',left:'a',right:'d',turnL:'q',turnR:'e',run:'shift'};for(let id in tm){let el=document.getElementById(id),k=tm[id];el.onpointerdown=e=>{e.preventDefault();keys[k]=true};el.onpointerup=el.onpointercancel=el.onpointerleave=()=>keys[k]=false}function togglePause(){if(finished)return;paused=!paused;document.getElementById('panel').style.display=paused?'flex':'none'}document.getElementById('pauseBtn').onclick=togglePause;document.getElementById('resume').onclick=togglePause;document.getElementById('retry').onclick=reset;document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
-let last=performance.now(),acc=0;function loop(now){let dt=(now-last)/1000;last=now;acc+=dt;if(acc>=1/30){acc%=1/30;move(1/30);render();if(!paused&&!finished)document.getElementById('timer').textContent=fmt((now-startTime)/1000)}requestAnimationFrame(loop)}function resize(){canvas.width=innerWidth;canvas.height=innerHeight}addEventListener('resize',resize);resize();reset();requestAnimationFrame(loop);</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>BACKROOMS // LEVEL 0</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;font-family:monospace;touch-action:none}
+#game{width:100%;height:100%;display:block;image-rendering:pixelated;image-rendering:crisp-edges}
+#ui{position:fixed;inset:0;pointer-events:none;color:#ddd;font-size:12px;text-shadow:1px 1px #000}
+#title{position:absolute;top:10px;left:12px;opacity:.55;letter-spacing:2px}
+#timer{position:absolute;top:10px;right:12px;opacity:.7;letter-spacing:1px}
+#pauseBtn{position:absolute;top:34px;right:12px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#ddd;border:1px solid #777;font:12px monospace}
+#hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);opacity:.45;text-align:center}
+#cross{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border:1px solid rgba(255,255,255,.3);box-sizing:border-box}
+#panel,#end{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(7,5,2,.88);color:#eee;text-align:center;z-index:5}
+#panel h1,#end h1{font-size:30px;letter-spacing:5px;margin:0 0 15px}
+#panel label{margin:8px}input[type=range]{width:220px}
+#resume,#retry{margin-top:15px;padding:10px 24px;border:1px solid #aaa;background:#18130c;color:#eee;font:14px monospace}
+#touch{position:fixed;inset:0;display:none;pointer-events:none}
+.stick{position:absolute;width:112px;height:112px;border:2px solid rgba(255,255,255,.18);border-radius:50%;background:rgba(0,0,0,.14);pointer-events:auto;box-sizing:border-box}
+.knob{position:absolute;width:44px;height:44px;left:32px;top:32px;border-radius:50%;background:rgba(220,200,130,.25);border:1px solid rgba(255,255,255,.25)}
+#moveStick{left:22px;bottom:24px}
+#lookStick{right:22px;bottom:24px}
+#run{position:absolute;right:60px;bottom:155px;width:64px;height:40px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(0,0,0,.2);color:#ddd;font:12px monospace;pointer-events:auto}
+@media(pointer:coarse){#touch{display:block}#hint{display:none}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="ui">
+<div id="title">BACKROOMS // LEVEL 0</div>
+<div id="timer">00:00.0</div>
+<button id="pauseBtn">PAUSE</button>
+<div id="cross"></div>
+<div id="hint">WASD / ARROWS TO MOVE • MOUSE OR Q/E TO LOOK • FIND THE EXIT</div>
+</div>
+<div id="panel">
+<h1>PAUSED</h1>
+<label>LOOK SENSITIVITY: <span id="sensVal">0.40</span></label>
+<input id="sens" type="range" min="0.10" max="1.00" step="0.05" value="0.40">
+<button id="resume">RESUME</button>
+</div>
+<div id="end">
+<h1>LEVEL COMPLETE</h1><p id="finalTime">TIME: 00:00.0</p><p>You found the way out.</p>
+<button id="retry">RETRY</button>
+</div>
+<div id="touch">
+<div class="stick" id="moveStick"><div class="knob"></div></div>
+<div class="stick" id="lookStick"><div class="knob"></div></div>
+<button id="run">RUN</button>
+</div>
+<script>
+'use strict';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d',{alpha:false});
+const W=240,H=135,buf=document.createElement('canvas');buf.width=W;buf.height=H;
+const g=buf.getContext('2d',{alpha:false}),img=g.createImageData(W,H),pix=img.data;
+const FOV=Math.PI/3,MW=41,MH=41;
+let seed=72631,map,exitCell,px,py,pa,startTime,finished=false,paused=false,sensitivity=.004;
+const keys={};
+
+function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
+function makeMap(){
+ seed=72631;const m=Array.from({length:MH},()=>Array(MW).fill(1));
+ function carve(x,y){
+  m[y][x]=0;const d=[[2,0],[-2,0],[0,2],[0,-2]];
+  for(let i=3;i>0;i--){const j=rnd()*(i+1)|0;[d[i],d[j]]=[d[j],d[i]]}
+  for(const [dx,dy] of d){const X=x+dx,Y=y+dy;
+   if(X>0&&X<MW-1&&Y>0&&Y<MH-1&&m[Y][X]){m[y+dy/2][x+dx/2]=0;carve(X,Y)}
+  }
+ }
+ carve(1,1);return m;
+}
+function findExit(){
+ const d=Array.from({length:MH},()=>Array(MW).fill(-1)),q=[[1,1]];d[1][1]=0;let far=[1,1];
+ for(let i=0;i<q.length;i++){const [x,y]=q[i];
+  if(d[y][x]>d[far[1]][far[0]])far=[x,y];
+  for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+   const X=x+dx,Y=y+dy;
+   if(X>=0&&X<MW&&Y>=0&&Y<MH&&map[Y][X]===0&&d[Y][X]<0){d[Y][X]=d[y][x]+1;q.push([X,Y])}
+  }
+ }
+ exitCell={x:far[0],y:far[1]};
+}
+function reset(){
+ map=makeMap();findExit();px=py=1.5;pa=0;startTime=performance.now();
+ finished=false;paused=false;document.getElementById('end').style.display='none';
+ document.getElementById('panel').style.display='none';clearKeys();
+}
+function clearKeys(){for(const k in keys)keys[k]=false}
+function wall(x,y){return x<0||y<0||x>=MW||y>=MH||map[y][x]===1}
+function atExit(x,y){return x===exitCell.x&&y===exitCell.y}
+function move(dt){
+ if(paused||finished)return;
+ let f=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0);
+ let s=(keys.d?1:0)-(keys.a?1:0);
+ if(keys.q||keys.arrowleft)pa-=dt*1.8;
+ if(keys.e||keys.arrowright)pa+=dt*1.8;
+ const sp=2.15*(keys.shift?1.55:1),ca=Math.cos(pa),sa=Math.sin(pa);
+ const dx=(ca*f-sa*s)*sp*dt,dy=(sa*f+ca*s)*sp*dt,r=.2;
+ if(!wall(Math.floor(px+dx+r*Math.sign(dx)),Math.floor(py)))px+=dx;
+ if(!wall(Math.floor(px),Math.floor(py+dy+r*Math.sign(dy))))py+=dy;
+ if(atExit(Math.floor(px),Math.floor(py)))finish();
+}
+function finish(){
+ finished=true;document.getElementById('finalTime').textContent='TIME: '+fmt((performance.now()-startTime)/1000);
+ document.getElementById('end').style.display='flex';clearKeys();
+}
+function fmt(t){const m=t/60|0,s=t%60|0,d=t*10%10|0;return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+d}
+function hash(x,y){let n=((x*374761393+y*668265263)>>>0);n=(n^(n>>13))*1274126177>>>0;n^=n>>16;return (n>>>0)/4294967296}
+function setPix(i,r,g,b){pix[i]=r;pix[i+1]=g;pix[i+2]=b;pix[i+3]=255}
+
+function render(){
+ const hz=H*.51;
+ // Warm yellow ceiling and worn yellow-brown carpet, using direct pixels instead of thousands of draw calls.
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+  const n=hash(x,y);
+  if(y<hz){
+   const v=Math.max(15,55+(hz-y)*.38+(n-.5)*12);
+   setPix((y*W+x)*4,v+10,v+7,v-5);
+  }else{
+   const v=Math.max(12,62-(y-hz)*.50+(n-.5)*15);
+   setPix((y*W+x)*4,v+12,v+5,v-7);
+  }
+ }
+ // Raycast walls.
+ for(let x=0;x<W;x++){
+  const cam=(x/W-.5)*2,ra=pa+Math.atan(cam*Math.tan(FOV/2));
+  const rx=Math.cos(ra),ry=Math.sin(ra);
+  let mx=Math.floor(px),my=Math.floor(py),side=0,hitExit=false;
+  const ddx=Math.abs(1/(rx||1e-9)),ddy=Math.abs(1/(ry||1e-9));
+  const sx=rx<0?-1:1,sy=ry<0?-1:1;
+  let sdx=rx<0?(px-mx)*ddx:(mx+1-px)*ddx;
+  let sdy=ry<0?(py-my)*ddy:(my+1-py)*ddy;
+  for(let i=0;i<120;i++){
+   if(sdx<sdy){sdx+=ddx;mx+=sx;side=0}else{sdy+=ddy;my+=sy;side=1}
+   if(wall(mx,my))break;
+   if(atExit(mx,my)){hitExit=true;break}
+  }
+  let dist=side===0?(mx-px+(1-sx)/2)/(rx||1e-9):(my-py+(1-sy)/2)/(ry||1e-9);
+  dist=Math.max(.05,dist*Math.cos(ra-pa));
+  const line=Math.min(H*2,H/dist*.92),top=(H-line)/2;
+  const shade=Math.max(8,78-dist*5)*(side?.82:1);
+  for(let y=Math.max(0,top|0);y<Math.min(H,(top+line)|0);y++){
+   const n=hash(x,y);
+   let r,gc,b;
+   if(hitExit){
+    const v=Math.max(12,48+(n-.5)*10-((x<3||x>W-4||y<3)?18:0));
+    r=v;gc=Math.max(8,v-18);b=Math.max(4,v-29);
+   }else{
+    const v=shade+(n-.5)*14;
+    r=Math.max(0,v+22);gc=Math.max(0,v+17);b=Math.max(0,v-5);
+   }
+   setPix((y*W+x)*4,r,gc,b);
+  }
+ }
+ g.putImageData(img,0,0);
+ ctx.imageSmoothingEnabled=false;ctx.drawImage(buf,0,0,canvas.width,canvas.height);
+}
+
+addEventListener('keydown',e=>{
+ const k=e.key.toLowerCase();
+ if(k==='escape'||k==='p'){togglePause();return}
+ keys[k]=true;
+ if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();
+});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+let drag=false,lastX=0;
+canvas.onpointerdown=e=>{if(paused||finished)return;drag=true;lastX=e.clientX;canvas.setPointerCapture(e.pointerId)};
+canvas.onpointerup=()=>drag=false;canvas.onpointercancel=()=>drag=false;
+canvas.onpointermove=e=>{if(drag&&!paused){pa+=(e.clientX-lastX)*sensitivity;lastX=e.clientX}};
+
+function joystick(el,knob,callback){
+ let active=false,id=null,cx=0,cy=0;
+ function update(x,y){let dx=x-cx,dy=y-cy,len=Math.hypot(dx,dy),max=42;if(len>max){dx*=max/len;dy*=max/len}
+  knob.style.transform='translate('+dx+'px,'+dy+'px)';callback(dx/max,dy/max);
+ }
+ el.addEventListener('pointerdown',e=>{e.preventDefault();active=true;id=e.pointerId;const r=el.getBoundingClientRect();cx=r.left+r.width/2;cy=r.top+r.height/2;el.setPointerCapture(id);update(e.clientX,e.clientY)});
+ el.addEventListener('pointermove',e=>{if(active&&e.pointerId===id)update(e.clientX,e.clientY)});
+ function end(){active=false;knob.style.transform='translate(0,0)';callback(0,0)}
+ el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+}
+joystick(document.getElementById('moveStick'),document.querySelector('#moveStick .knob'),(x,y)=>{
+ keys.w=y<-.18;keys.s=y>.18;keys.a=x<-.18;keys.d=x>.18;
+});
+joystick(document.getElementById('lookStick'),document.querySelector('#lookStick .knob'),(x)=>{if(!paused&&!finished)pa+=x*.035});
+const run=document.getElementById('run');
+run.onpointerdown=e=>{e.preventDefault();keys.shift=true};run.onpointerup=run.onpointercancel=()=>keys.shift=false;
+
+function togglePause(){if(finished)return;paused=!paused;clearKeys();document.getElementById('panel').style.display=paused?'flex':'none'}
+document.getElementById('pauseBtn').onclick=togglePause;
+document.getElementById('resume').onclick=togglePause;
+document.getElementById('retry').onclick=reset;
+document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
+
+let last=performance.now(),acc=0;
+function loop(now){
+ const dt=Math.min(.1,(now-last)/1000);last=now;acc+=dt;
+ if(acc>=1/30){acc-=1/30;move(1/30);render();if(!paused&&!finished)document.getElementById('timer').textContent=fmt((now-startTime)/1000)}
+ requestAnimationFrame(loop);
+}
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
+addEventListener('resize',resize);resize();reset();requestAnimationFrame(loop);
+</script>
+</body>
+</html>
