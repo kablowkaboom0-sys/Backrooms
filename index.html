@@ -925,19 +925,9 @@ function render(){
   }
  }
 
- // Same floor renderer as Level 0.
- for(let y=Math.max(0,Math.floor(hz)+1);y<H;y++){
-  const row=(y-hz)/H;
-  const fiberScale=10+Math.floor(row*45);
-  for(let x=0;x<W;x++){
-   const i=(y*W+x)*4;
-   const n=hash(x+fiberScale*17,y+fiberScale*31)-.5;
-   const fiber=n*18;
-   pix[i]=Math.max(0,Math.min(255,pix[i]+fiber));
-   pix[i+1]=Math.max(0,Math.min(255,pix[i+1]+fiber*.20));
-   pix[i+2]=Math.max(0,Math.min(255,pix[i+2]+fiber*.18));
-  }
- }
+ // Floor is kept as a clean world-space base here.
+ // Do not add screen-coordinate noise: that makes the texture look burned
+ // onto the lower half of the display instead of attached to the floor.
 
  drawCeilingLightsSafe();
  g.putImageData(img,0,0);
