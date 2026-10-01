@@ -660,6 +660,36 @@ function entitySilhouette(gx,gy,scale){
  rect(4,12,1,8);rect(6,12,1,8); // legs
  rect(2,13,1,4);rect(8,13,1,4); // hanging arms
 }
+function drawCeilingLightsSafe(){
+ if(gameMode!=="level0"||!map)return;
+ const hz=H*.51;
+ for(let n=0;n<8;n++){
+  const d=2.8+n*2.2;
+  const wx=px+Math.cos(pa)*d;
+  const wy=py+Math.sin(pa)*d;
+  const lat=Math.sin(n*2.37)*1.15;
+  const lx=wx+Math.cos(pa+Math.PI/2)*lat;
+  const ly=wy+Math.sin(pa+Math.PI/2)*lat;
+  const dx=lx-px,dy=ly-py;
+  const forward=dx*Math.cos(pa)+dy*Math.sin(pa);
+  if(forward<.8||forward>RENDER_DISTANCE)continue;
+  const lateral=-dx*Math.sin(pa)+dy*Math.cos(pa);
+  const angle=Math.atan2(lateral,forward);
+  if(Math.abs(angle)>FOV*.58)continue;
+  const sx=Math.round(W/2+(Math.tan(angle)/Math.tan(FOV/2))*(W/2));
+  const sy=Math.round(hz-(1.05/forward)*(H*.46));
+  const hw=Math.max(2,Math.round(7/forward));
+  const hh=Math.max(1,Math.round(1.2/forward));
+  for(let y=Math.max(0,sy-hh);y<=Math.min(H-1,sy+hh);y++){
+   for(let x=Math.max(0,sx-hw);x<=Math.min(W-1,sx+hw);x++){
+    if(y>=hz)continue;
+    if(depthBuffer[x]<forward-.12)continue;
+    const i=(y*W+x)*4;
+    pix[i]=255;pix[i+1]=252;pix[i+2]=225;
+   }
+  }
+ }
+}
 function drawEntities(){
  for(const e of entities){
   const dx=e.x-px,dy=e.y-py,dist=Math.hypot(dx,dy);
@@ -846,6 +876,7 @@ function render(){
   }
  }
 
+ drawCeilingLightsSafe();
  g.putImageData(img,0,0);
  drawClueArrows();
  drawEntities();
