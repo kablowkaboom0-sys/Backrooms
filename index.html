@@ -715,7 +715,11 @@ document.getElementById('mapBtn').onclick=openMap;
 document.getElementById('mapClose').onclick=closeMap;
 document.getElementById('resume').onclick=togglePause;
 document.getElementById('clueToggle').onclick=toggleClues;
-document.getElementById('retry').onclick=reset;
+document.getElementById('retry').onclick=()=>{
+ document.getElementById('end').style.display='none';
+ document.getElementById('startScreen').style.display='flex';
+ gameStarted=false;finished=false;clearKeys();
+};
 updateClueToggle();
 document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
 
