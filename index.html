@@ -674,32 +674,68 @@ function drawCeilingLightsSafe(){
  if(gameMode==="pool"||!ceilingLights.length)return;
  const hz=H*.51;
  const tanHalf=Math.tan(FOV/2);
- for(const light of ceilingLights){
-  const dx=light.x-px,dy=light.y-py;
+ const half=.34;
+ const panelZ=1.02;
+
+ function project(wx,wy){
+  const dx=wx-px,dy=wy-py;
   const forward=dx*Math.cos(pa)+dy*Math.sin(pa);
-  if(forward<.7||forward>RENDER_DISTANCE)continue;
   const lateral=-dx*Math.sin(pa)+dy*Math.cos(pa);
+  if(forward<=.25)return null;
   const angle=Math.atan2(lateral,forward);
-  if(Math.abs(angle)>FOV*.58)continue;
-
   const sx=W/2+(Math.tan(angle)/tanHalf)*(W/2);
-  const sy=hz-(1.05/forward)*(H*.46);
-  const size=Math.max(1,Math.round((H*.075)/forward));
-  const hw=size;
-  const hh=size;
+  const sy=hz-(panelZ/forward)*(H*.46);
+  return {x:sx,y:sy,d:forward};
+ }
 
-  for(let y=Math.max(0,Math.floor(sy-hh));y<=Math.min(H-1,Math.ceil(sy+hh));y++){
-   if(y>=hz)continue;
-   for(let x=Math.max(0,Math.floor(sx-hw));x<=Math.min(W-1,Math.ceil(sx+hw));x++){
-    if(depthBuffer[x]<forward-.18)continue;
+ for(const light of ceilingLights){
+  // Four actual world-space corners of a square ceiling panel.
+  const corners=[
+   project(light.x-half,light.y-half),
+   project(light.x+half,light.y-half),
+   project(light.x+half,light.y+half),
+   project(light.x-half,light.y+half)
+  ];
+  if(corners.some(p=>!p))continue;
+
+  const center=project(light.x,light.y);
+  if(!center||center.d>RENDER_DISTANCE)continue;
+
+  const minX=Math.max(0,Math.floor(Math.min(...corners.map(p=>p.x))));
+  const maxX=Math.min(W-1,Math.ceil(Math.max(...corners.map(p=>p.x))));
+  const minY=Math.max(0,Math.floor(Math.min(...corners.map(p=>p.y))));
+  const maxY=Math.min(Math.floor(hz-1),Math.ceil(Math.max(...corners.map(p=>p.y))));
+  if(minX>maxX||minY>maxY)continue;
+
+  function inside(px2,py2){
+   let sign=0;
+   for(let i=0;i<4;i++){
+    const p=corners[i],q=corners[(i+1)%4];
+    const cross=(q.x-p.x)*(py2-p.y)-(q.y-p.y)*(px2-p.x);
+    if(Math.abs(cross)<.01)continue;
+    const s=cross>0?1:-1;
+    if(!sign)sign=s;
+    else if(s!==sign)return false;
+   }
+   return true;
+  }
+
+  for(let y=minY;y<=maxY;y++){
+   for(let x=minX;x<=maxX;x++){
+    if(!inside(x+.5,y+.5))continue;
+    // The panel is on the ceiling plane; don't paint it through a nearer wall.
+    if(depthBuffer[x]<center.d-.18)continue;
     const i=(y*W+x)*4;
-    const edge=Math.max(Math.abs((x-sx)/Math.max(1,hw)),Math.abs((y-sy)/Math.max(1,hh)));
-    if(edge>.92){
-     pix[i]=Math.min(255,pix[i]+34);
-     pix[i+1]=Math.min(255,pix[i+1]+34);
-     pix[i+2]=Math.min(255,pix[i+2]+30);
+    const edge=Math.min(
+     Math.abs(x-corners[0].x),
+     Math.abs(x-corners[1].x),
+     Math.abs(y-corners[0].y),
+     Math.abs(y-corners[2].y)
+    );
+    if(edge<1.1){
+     pix[i]=215;pix[i+1]=212;pix[i+2]=190;
     }else{
-     pix[i]=255;pix[i+1]=252;pix[i+2]=226;
+     pix[i]=255;pix[i+1]=253;pix[i+2]=232;
     }
    }
   }
