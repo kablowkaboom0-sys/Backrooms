@@ -456,43 +456,28 @@ function fmt(t){const m=t/60|0,s=t%60|0,d=t*10%10|0;return String(m).padStart(2,
 function hash(x,y){let n=((x*374761393+y*668265263)>>>0);n=(n^(n>>13))*1274126177>>>0;n^=n>>16;return (n>>>0)/4294967296}
 function texNoise(x,y){return hash(Math.floor(x*8),Math.floor(y*8))-.5}
 function wallTexture(x,y){
- // Yellow/green repeating wallpaper inspired by the supplied Backrooms reference.
- // Kept entirely procedural so it adds no external assets or loading dependencies.
- const n=texNoise(x,y);
- const u=x*2.15;
- const v=y*1.15;
+ // Chunky pixel-art Backrooms wallpaper.
+ // No smooth waves or furry detail: the surface is built from a small
+ // palette of hard-edged square blocks, like a low-resolution texture.
+ const cellX=Math.floor(x*8);
+ const cellY=Math.floor(y*8);
+ const h=hash(cellX*31+17,cellY*47+9);
+ const block=Math.floor(h*5);
 
- // Soft yellow base with small paper variation.
- let r=184+n*9;
- let g=166+n*9;
- let b=91+n*6;
+ let r=188,g=170,b=94;
+ if(block===0){r-=20;g-=17;b-=8;}
+ else if(block===1){r-=10;g-=8;b-=4;}
+ else if(block===3){r+=8;g+=6;b+=3;}
+ else if(block===4){r+=14;g+=11;b+=5;}
 
- // Repeating vertical wavy motif.
- const wave=Math.sin(v*6.283 + Math.sin(u*6.283)*1.25);
- const wave2=Math.sin(v*6.283 + Math.sin((u+.5)*6.283)*1.25);
- const stripe=Math.abs(Math.sin(u*3.14159));
- const motif=Math.max(0,1-Math.abs(wave)*1.8)*Math.max(0.25,stripe);
-
- // Muted green pattern, with a second thinner highlight edge.
- const green=motif*42;
- r-=green*.52;
- g-=green*.25;
- b-=green*.62;
-
- const edge=Math.max(0,1-Math.abs(wave2)*4)*Math.max(0,Math.sin(u*6.283));
- r-=edge*16;
- g-=edge*12;
- b-=edge*8;
-
- // Subtle horizontal paper bands and vertical panel seams.
- const band=(Math.floor(y*2.0)%2===0)?-3:0;
- const local=x-Math.floor(x);
- const seam=(local<.025||local>.975)?-10:0;
+ // A few muted green pixels give the wallpaper its old Backrooms feel.
+ if(((cellX*13+cellY*7)&15)===3){r-=24;g-=12;b-=18;}
+ if(((cellX*5-cellY*11)&31)===7){r-=13;g-=7;b-=10;}
 
  return [
-  Math.max(0,Math.min(255,r+band+seam)),
-  Math.max(0,Math.min(255,g+band+seam*.65)),
-  Math.max(0,Math.min(255,b+band*.6+seam*.35))
+  Math.max(0,Math.min(255,r)),
+  Math.max(0,Math.min(255,g)),
+  Math.max(0,Math.min(255,b))
  ];
 }
 function drawCeilingLights(){
@@ -913,10 +898,15 @@ function render(){
     // No screen x/y coordinates are used, so the detail cannot stick to the display.
     const hitX=px+rx*dist;
     const hitY=py+ry*dist;
-    const detailCellX=Math.floor(hitX*32);
-    const detailCellY=Math.floor(hitY*32);
+    // Quantize the wall surface into chunky blocks. The horizontal coordinate
+    // comes from the real 3D wall hit, while the vertical coordinate is a
+    // normalized position on the wall, so the pixels stay attached to it.
+    const detailCellX=Math.floor(hitX*8);
+    const detailCellY=Math.floor((y-top)/Math.max(1,line)*14);
     const detailHash=((detailCellX*374761393+detailCellY*668265263)>>>0);
-    const pixelDetail=(detailHash%11===0)?6:((detailHash%17===0)?-5:0);
+    const pixelDetail=(detailHash%13===0)?14:
+      ((detailHash%9===0)?-14:
+      ((detailHash%5===0)?7:-2));
     const light=Math.max(.30,Math.min(1,shade/78));
     r=(wt[0]+pixelDetail)*light*fog;
     gc=(wt[1]+pixelDetail*.7)*light*fog;
