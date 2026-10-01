@@ -1007,16 +1007,11 @@ function render(){
    const floorDepth=cameraHeight/Math.max(.012,vertical);
    const i=(y*W+x)*4;
 
-   if(floorDepth>RENDER_DISTANCE){
-    // Beyond the useful world range, fade into the normal distant floor tone
-    // instead of repeatedly sampling one clamped world position.
-    const t=Math.min(1,(floorDepth-RENDER_DISTANCE)/6);
-    const base=gameMode==="pool"?178:181;
-    const baseG=gameMode==="pool"?184:164;
-    const baseB=gameMode==="pool"?178:126;
-    setPix(i,base*(1-t)+base*t,baseG*(1-t)+baseG*t,baseB*(1-t)+baseB*t);
-    continue;
-   }
+   // A floor point must not be drawn through the nearest wall.
+   // When the projected floor distance was farther than the wall hit, the
+   // renderer could reveal the floor of a distant Pool Rooms chamber as a
+   // large rectangle that seemed to flow toward the bottom of the screen.
+   if(floorDepth>RENDER_DISTANCE || floorDepth>dist+.12)continue;
 
    const wx=px+floorCos*floorDepth;
    const wy=py+floorSin*floorDepth;
