@@ -924,22 +924,20 @@ function render(){
    }
    setPix((y*W+x)*4,r,gc,b);
   }
- }
 
- // World-space cream carpet. The floor sample is derived from the
- // camera ray and its distance from the horizon, so every furry detail
- // belongs to a real floor position rather than a fixed screen pixel.
- for(let y=Math.max(0,Math.floor(hz)+1);y<H;y++){
-  const row=(y-hz)/H;
-  const floorDepth=Math.min(RENDER_DISTANCE,2.25/Math.max(.035,row));
-  const depthFade=Math.max(.28,1-Math.max(0,floorDepth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.34);
-  for(let x=0;x<W;x++){
-   const cam=(x/W-.5)*2;
-   const ra=pa+Math.atan(cam*Math.tan(FOV/2));
-   const wx=px+Math.cos(ra)*floorDepth;
-   const wy=py+Math.sin(ra)*floorDepth;
+  // Render the cream carpet only below this column's visible wall slice.
+  // This prevents the floor from painting over the lower half of walls.
+  const floorStart=Math.max(Math.floor(hz)+1,bottom);
+  const floorRayAngle=ra;
+  const floorCos=Math.cos(floorRayAngle),floorSin=Math.sin(floorRayAngle);
+  for(let y=floorStart;y<H;y++){
+   const row=(y-hz)/H;
+   const floorDepth=Math.min(RENDER_DISTANCE,.50/Math.max(.055,row));
+   const wx=px+floorCos*floorDepth;
+   const wy=py+floorSin*floorDepth;
    const ct=carpetTexture(wx,wy);
-   const light=Math.max(.34,1-floorDepth*.028)*depthFade;
+   const depthFade=Math.max(.55,1-Math.max(0,floorDepth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.18);
+   const light=Math.max(.55,1-floorDepth*.018)*depthFade;
    const i=(y*W+x)*4;
    setPix(i,ct[0]*light,ct[1]*light,ct[2]*light);
   }
