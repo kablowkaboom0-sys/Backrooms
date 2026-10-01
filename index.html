@@ -660,7 +660,7 @@ function render(){
  ctx.fillRect(0,0,canvas.width,canvas.height);
  if(!gameStarted||!map)return;
 
- const hz=H*.51-pz*8;
+ const hz=H*.51+(gameMode==="pool"?12:0)-pz*8;
 
  // Fast world-space ceiling/floor. Keep the low-resolution pixel style, but avoid
  // expensive calculations for every screen pixel.
