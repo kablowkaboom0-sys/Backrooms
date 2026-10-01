@@ -164,15 +164,34 @@ function entityCountForSize(size){
 function spawnEntities(){
  entities=[];
  const count=entityCountForSize(MW);
- // Use deterministic but separated corridor cells so they start away from the player.
+ // Build a pool of valid corridor cells away from the player's start.
  const candidates=[];
  for(let y=1;y<MH-1;y++)for(let x=1;x<MW-1;x++){
   if(map[y][x]===0 && Math.hypot(x+.5-1.5,y+.5-1.5)>6) candidates.push([x,y]);
  }
- // Spread starting positions through the maze.
- for(let i=0;i<count;i++){
-  let pick=candidates[Math.floor((i+.5)*candidates.length/count)];
-  if(!pick)pick=[MW-2,MH-2];
+ if(!candidates.length)return;
+
+ // Farthest-point sampling: each new entity is placed as far as possible
+ // from all already chosen entities. This prevents clustered spawns and
+ // spreads them across different parts of the maze.
+ const chosen=[];
+ let first=Math.floor(rnd()*candidates.length);
+ chosen.push(candidates[first]);
+ for(let i=1;i<count;i++){
+  let best=null,bestScore=-1;
+  for(const candidate of candidates){
+   if(chosen.some(p=>p[0]===candidate[0]&&p[1]===candidate[1]))continue;
+   let nearest=Infinity;
+   for(const p of chosen){
+    const d=Math.hypot(candidate[0]-p[0],candidate[1]-p[1]);
+    if(d<nearest)nearest=d;
+   }
+   if(nearest>bestScore){bestScore=nearest;best=candidate;}
+  }
+  if(best)chosen.push(best);
+ }
+ for(let i=0;i<chosen.length;i++){
+  const pick=chosen[i];
   entities.push({
    x:pick[0]+.5,y:pick[1]+.5,
    path:[],nextThink:0,lastHit:0,
