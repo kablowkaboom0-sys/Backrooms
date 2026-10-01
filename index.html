@@ -446,8 +446,43 @@ function hash(x,y){let n=((x*374761393+y*668265263)>>>0);n=(n^(n>>13))*127412617
 function texNoise(x,y){return hash(Math.floor(x*8),Math.floor(y*8))-.5}
 function wallTexture(x,y){
  const n=texNoise(x,y);
- const seam=(Math.floor(y*2)%2===0)?-4:0;
- return [Math.max(0,178+n*18+seam),Math.max(0,151+n*16+seam),Math.max(0,76+n*10+seam)];
+ const panel=Math.floor(x*1.65),local=x*1.65-panel;
+ const verticalSeam=(local<.045||local>.955)?-22:0;
+ const band=(Math.floor(y*2)%2===0)?-4:0;
+ const mark=hash(panel*41+Math.floor(y*5)*17,Math.floor(y*5)*31)-.5;
+ const subtle=mark*7;
+ return [
+  Math.max(0,178+n*12+band+verticalSeam+subtle),
+  Math.max(0,151+n*11+band+verticalSeam*.75+subtle*.8),
+  Math.max(0,76+n*7+band+verticalSeam*.45+subtle*.5)
+ ];
+}
+function drawCeilingLights(){
+ if(gameMode!=="level0")return;
+ const fixtures=[2.7,4.6,6.8,9.4,12.5,16];
+ for(let i=0;i<fixtures.length;i++){
+  const d=fixtures[i],sideOffset=(i%2===0?-.35:.35);
+  const wx=px+Math.cos(pa)*d+Math.cos(pa+Math.PI/2)*sideOffset;
+  const wy=py+Math.sin(pa)*d+Math.sin(pa+Math.PI/2)*sideOffset;
+  const dx=wx-px,dy=wy-py;
+  const forward=dx*Math.cos(pa)+dy*Math.sin(pa),lateral=-dx*Math.sin(pa)+dy*Math.cos(pa);
+  if(forward<=.35)continue;
+  const sx=Math.round(W/2+(lateral/forward)*(W/(2*Math.tan(FOV/2))));
+  const sy=Math.round(hz-(1.05/forward)*(H*.52));
+  const halfW=Math.max(2,Math.round(8/forward)),halfH=Math.max(1,Math.round(1.5/forward));
+  for(let yy=sy-halfH-2;yy<=sy+halfH+2;yy++){
+   if(yy<0||yy>=H||yy>=hz)continue;
+   for(let xx=sx-halfW-2;xx<=sx+halfW+2;xx++){
+    if(xx<0||xx>=W||depthBuffer[xx]+.05<forward)continue;
+    const edge=Math.max(Math.abs(xx-sx)/(halfW+2),Math.abs(yy-sy)/(halfH+2));
+    if(edge>1)continue;
+    const glow=1-edge,idx=(yy*W+xx)*4,base=160+95*glow;
+    pix[idx]=Math.max(pix[idx],Math.min(255,base));
+    pix[idx+1]=Math.max(pix[idx+1],Math.min(255,base));
+    pix[idx+2]=Math.max(pix[idx+2],Math.min(255,base*.92));
+   }
+  }
+ }
 }
 function carpetTexture(x,y){
  // Fine, irregular carpet fibers: individual low-res pixels rather than large repeating blocks.
@@ -743,6 +778,7 @@ function render(){
  }
 
  // Same floor renderer as Level 0.
+ drawCeilingLights();
  for(let y=Math.max(0,Math.floor(hz)+1);y<H;y++){
   const row=(y-hz)/H;
   const fiberScale=10+Math.floor(row*45);
