@@ -899,11 +899,13 @@ function render(){
       (169+tileNoise+seam*.55)*light);
    }
   }else{
-   // Do not let Pool Rooms inherit the old Level 0 red fallback.
+   // Pool Rooms has no Level 0 carpet fallback.
+   // Keep uncovered/distant pixels dark instead of creating a flat grey
+   // "floor section" that looks like another room opening in the distance.
    if(gameMode==="pool"){
-    const rr=178*fade*fog;
-    const gg=184*fade*fog;
-    const bb=178*fade*fog;
+    const rr=22*fade*fog;
+    const gg=32*fade*fog;
+    const bb=35*fade*fog;
     for(let x=0;x<W;x++)setPix((y*W+x)*4,rr,gg,bb);
    }else{
     const base=108;
