@@ -684,8 +684,9 @@ function drawCeilingLightsSafe(){
 
   const sx=W/2+(Math.tan(angle)/tanHalf)*(W/2);
   const sy=hz-(1.05/forward)*(H*.46);
-  const hw=Math.max(1,Math.round((W*.34)/(forward*tanHalf)));
-  const hh=Math.max(1,Math.round((H*.065)/forward));
+  const size=Math.max(1,Math.round((H*.075)/forward));
+  const hw=size;
+  const hh=size;
 
   for(let y=Math.max(0,Math.floor(sy-hh));y<=Math.min(H-1,Math.ceil(sy+hh));y++){
    if(y>=hz)continue;
