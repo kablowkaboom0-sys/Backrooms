@@ -997,12 +997,13 @@ function render(){
   const floorRayAngle=ra;
   const floorCos=Math.cos(floorRayAngle),floorSin=Math.sin(floorRayAngle);
   for(let y=floorStart;y<H;y++){
-   // Intersect the camera ray with the horizontal floor plane instead of
-   // using a screen-row distance approximation. This keeps floor tiles
-   // perspective-correct all the way into the distance.
+   // Use a true ground-plane projection. The camera's horizontal ray is
+   // extended by the exact distance where the viewing ray meets the floor.
+   // This avoids the compressed/expanded texture bands seen in the distance.
    const focal=H/.92;
-   const cameraZ=.46;
-   const floorDepth=Math.min(RENDER_DISTANCE,cameraZ*focal/Math.max(1,y-hz));
+   const cameraHeight=.46;
+   const vertical=(y-hz)/focal;
+   const floorDepth=Math.min(RENDER_DISTANCE,cameraHeight/Math.max(.012,vertical));
    const wx=px+floorCos*floorDepth;
    const wy=py+floorSin*floorDepth;
    const ct=gameMode==="pool"?poolFloorTexture(wx,wy):carpetTexture(wx,wy);
