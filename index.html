@@ -90,7 +90,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v1</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v2</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div>
 <button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -523,7 +523,7 @@ function spawnEntities(){
   entities.push({
    x:pick[0]+.5,y:pick[1]+.5,
    path:[],nextThink:0,lastHit:0,
-   phase:i*.9
+   phase:i*.9,walkPhase:i*.9
   });
  }
 }
@@ -571,9 +571,12 @@ function updateEntities(now,dt){
    const playerBaseSpeed=2.15;
    const entitySpeed=MW===21?ENTITY_SPEED:MW===31?ENTITY_SPEED*1.15:playerBaseSpeed;
    const step=Math.min(entitySpeed*dt,len);
+   const oldX=e.x,oldY=e.y;
    const nx=e.x+vx/len*step,ny=e.y+vy/len*step;
    if(!wall(Math.floor(nx),Math.floor(e.y)) && Math.hypot(nx-px,e.y-py)>.32)e.x=nx;
    if(!wall(Math.floor(e.x),Math.floor(ny)) && Math.hypot(e.x-px,ny-py)>.32)e.y=ny;
+   const moved=Math.hypot(e.x-oldX,e.y-oldY);
+   if(moved>0)e.walkPhase=(e.walkPhase||0)+moved*14;
   }else if(now-e.lastHit>=ENTITY_DAMAGE_COOLDOWN){
    e.lastHit=now;
    playerHealth=Math.max(0,playerHealth-ENTITY_DAMAGE);
@@ -997,6 +1000,123 @@ function drawCeilingLightsSafe(){
  }
 }
 
+function drawLevel0Entity(center,top,h,unit,phase){
+ // Smooth organic Level 0 figure based on the supplied reference:
+ // oversized irregular head, extremely thin torso, long arms/legs and
+ // small hand/finger ends. The movement is animated without changing AI.
+ const walk=phase||0;
+ const armSwing=Math.sin(walk)*1.25*unit;
+ const legSwing=Math.sin(walk+Math.PI)*.95*unit;
+ const bob=Math.abs(Math.sin(walk*2))*.18*unit;
+ const cx=center,cy=top+bob;
+
+ g.save();
+ g.lineCap='round';
+ g.lineJoin='round';
+
+ // Warm Backrooms-carpet palette so the figure belongs to Level 0 instead
+ // of looking like the black Pool Rooms Smiler or a chunky pixel sprite.
+ const body='#b9ad87';
+ const shadow='#756a4c';
+ const light='#d5caa5';
+
+ // Long legs first.
+ g.strokeStyle=shadow;
+ g.lineWidth=Math.max(.65,unit*.72);
+ g.beginPath();
+ g.moveTo(cx-1.35*unit,cy+13.0*unit);
+ g.quadraticCurveTo(cx-1.55*unit+legSwing,cy+16.4*unit,cx-1.85*unit+legSwing,cy+20.0*unit);
+ g.quadraticCurveTo(cx-2.15*unit+legSwing,cy+21.0*unit,cx-2.35*unit+legSwing,cy+21.8*unit);
+ g.stroke();
+ g.beginPath();
+ g.moveTo(cx+1.35*unit,cy+13.0*unit);
+ g.quadraticCurveTo(cx+1.55*unit-legSwing,cy+16.4*unit,cx+1.85*unit-legSwing,cy+20.0*unit);
+ g.quadraticCurveTo(cx+2.15*unit-legSwing,cy+21.0*unit,cx+2.35*unit-legSwing,cy+21.8*unit);
+ g.stroke();
+
+ // Slightly lighter inner leg highlights.
+ g.strokeStyle=light;
+ g.lineWidth=Math.max(.35,unit*.22);
+ g.beginPath();
+ g.moveTo(cx-1.30*unit,cy+13.0*unit);
+ g.lineTo(cx-1.75*unit+legSwing,cy+19.8*unit);
+ g.stroke();
+ g.beginPath();
+ g.moveTo(cx+1.30*unit,cy+13.0*unit);
+ g.lineTo(cx+1.75*unit-legSwing,cy+19.8*unit);
+ g.stroke();
+
+ // Thin torso: tapered and organic rather than rectangular.
+ g.fillStyle=body;
+ g.beginPath();
+ g.moveTo(cx-.82*unit,cy+5.2*unit);
+ g.quadraticCurveTo(cx-1.05*unit,cy+8.0*unit,cx-.68*unit,cy+13.5*unit);
+ g.quadraticCurveTo(cx,cy+14.2*unit,cx+.68*unit,cy+13.5*unit);
+ g.quadraticCurveTo(cx+1.05*unit,cy+8.0*unit,cx+.82*unit,cy+5.2*unit);
+ g.quadraticCurveTo(cx,cy+4.7*unit,cx-.82*unit,cy+5.2*unit);
+ g.fill();
+
+ // Long curved arms with alternating swing.
+ g.strokeStyle=body;
+ g.lineWidth=Math.max(.7,unit*.62);
+ g.beginPath();
+ g.moveTo(cx-.68*unit,cy+6.0*unit);
+ g.quadraticCurveTo(cx-2.45*unit,cy+7.0*unit,cx-2.8*unit-armSwing,cy+10.7*unit);
+ g.quadraticCurveTo(cx-3.0*unit-armSwing,cy+12.3*unit,cx-3.35*unit-armSwing,cy+14.8*unit);
+ g.stroke();
+ g.beginPath();
+ g.moveTo(cx+.68*unit,cy+6.0*unit);
+ g.quadraticCurveTo(cx+2.45*unit,cy+7.0*unit,cx+2.8*unit+armSwing,cy+10.7*unit);
+ g.quadraticCurveTo(cx+3.0*unit+armSwing,cy+12.3*unit,cx+3.35*unit+armSwing,cy+14.8*unit);
+ g.stroke();
+
+ // Tiny fingers/hand ends.
+ g.lineWidth=Math.max(.35,unit*.24);
+ for(const side of [-1,1]){
+  const sx=cx+side*(3.35*unit+side*armSwing),sy=cy+14.8*unit;
+  for(let j=-1;j<=1;j++){
+   g.beginPath();
+   g.moveTo(sx,sy);
+   g.lineTo(sx+side*(.48*unit),sy+(j*.28*unit));
+   g.stroke();
+  }
+ }
+
+ // Irregular oversized head.
+ g.fillStyle=body;
+ g.beginPath();
+ g.moveTo(cx-2.15*unit,cy+1.0*unit);
+ g.quadraticCurveTo(cx-2.75*unit,cy-1.0*unit,cx-1.45*unit,cy-2.65*unit);
+ g.quadraticCurveTo(cx-.25*unit,cy-4.05*unit,cx+1.35*unit,cy-3.25*unit);
+ g.quadraticCurveTo(cx+2.65*unit,cy-2.55*unit,cx+2.55*unit,cy-.55*unit);
+ g.quadraticCurveTo(cx+2.75*unit,cy+1.15*unit,cx+1.35*unit,cy+2.0*unit);
+ g.quadraticCurveTo(cx-.15*unit,cy+2.75*unit,cx-1.35*unit,cy+2.0*unit);
+ g.quadraticCurveTo(cx-2.15*unit,cy+1.8*unit,cx-2.15*unit,cy+1.0*unit);
+ g.fill();
+
+ // Organic head shading.
+ g.strokeStyle=shadow;
+ g.lineWidth=Math.max(.35,unit*.25);
+ g.beginPath();
+ g.moveTo(cx-1.65*unit,cy-.35*unit);
+ g.quadraticCurveTo(cx-.55*unit,cy-1.15*unit,cx+.65*unit,cy-.65*unit);
+ g.quadraticCurveTo(cx+1.35*unit,cy-.35*unit,cx+1.75*unit,cy+.55*unit);
+ g.stroke();
+
+ // Subtle carpet-like mottling, deterministic from the entity phase.
+ g.fillStyle='rgba(88,77,52,.28)';
+ for(let i=0;i<9;i++){
+  const a=i*2.17+phase*.035;
+  const rx=Math.sin(a*1.7)*1.55*unit;
+  const ry=Math.cos(a*1.31)*2.0*unit;
+  const r=Math.max(.18,unit*(.18+(i%3)*.08));
+  g.beginPath();
+  g.arc(cx+rx,cy+ry,r,0,Math.PI*2);
+  g.fill();
+ }
+ g.restore();
+}
+
 function drawSmiler(center,top,h,unit,dist){
  // Pool Rooms entity: a floating Smiler face, with its body hidden in
  // darkness. It stays as a simple pixel-art face while scaling with depth.
@@ -1059,13 +1179,7 @@ function drawEntities(){
   if(gameMode==="pool"){
    drawSmiler(center,top,h,unit,dist);
   }else{
-   g.fillStyle='#090909';
-   entitySilhouette(left,top,h);
-   // Subtle light edge so the silhouette remains visible in dark rooms.
-   g.fillStyle='rgba(35,35,30,.8)';
-   const eyeY=top+Math.max(1,unit*6);
-   g.fillRect(center-unit,eyeY,unit,unit);
-   g.fillRect(center+unit,eyeY,unit,unit);
+   drawLevel0Entity(center,top,h,unit,e.walkPhase||e.phase||0);
   }
  }
 }
