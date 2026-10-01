@@ -26,8 +26,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #startScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#090806;color:#ddd;text-align:center;z-index:10}
 #startScreen h1{font-size:34px;letter-spacing:7px;margin:0 0 8px}
 #startScreen .sub{opacity:.5;letter-spacing:3px;margin-bottom:28px}
-#modeChoices,#difficultyChoices{display:flex;flex-direction:column;align-items:center}
-#difficultyChoices{display:none}
+#modeChoices,#horrorChoices,#difficultyChoices{display:flex;flex-direction:column;align-items:center}
+#horrorChoices,#difficultyChoices{display:none}
 .mode{width:250px;margin:8px;padding:14px;background:#17120c;color:#ddd;border:1px solid #777;font:16px monospace;letter-spacing:2px}
 .mode:hover{background:#272016;border-color:#aaa}
 #backModes{margin-top:14px;padding:8px 18px;background:#111;color:#bbb;border:1px solid #666;font:12px monospace}
@@ -61,6 +61,11 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <div id="modeChoices">
 <button class="mode" data-mode="level0">LEVEL 0</button>
 <button class="mode" data-mode="pool">POOL ROOMS</button>
+</div>
+<div id="horrorChoices">
+<div class="sub">CHOOSE GAME MODE</div>
+<button class="mode" data-playmode="peaceful">PEACEFUL MODE</button>
+<button class="mode" data-playmode="horror">HORROR MODE</button>
 </div>
 <div id="difficultyChoices">
 <button class="diff" data-size="21">EASY</button>
@@ -122,6 +127,7 @@ let cluePathCellX=-1,cluePathCellY=-1;
 let entities=[];
 let difficultySize=41;
 let gameMode="level0";
+let playMode="horror";
 let startCell={x:1,y:1};
 let pz=0;
 let poolRoomType=[];
@@ -343,6 +349,7 @@ function entityCountForSize(size){
 }
 function spawnEntities(){
  entities=[];
+ if(playMode==="peaceful")return;
  const count=entityCountForSize(MW);
  // Build a pool of valid corridor cells away from the player's start.
  const candidates=[];
@@ -1134,16 +1141,22 @@ function openMap(){
  document.getElementById('mapPanel').style.display='flex';
 }
 function closeMap(){document.getElementById('mapPanel').style.display='none'}
-document.querySelectorAll('.mode').forEach(btn=>btn.onclick=()=>{
+document.querySelectorAll('#modeChoices .mode').forEach(btn=>btn.onclick=()=>{
  gameMode=btn.dataset.mode;
  document.getElementById('modeChoices').style.display='none';
+ document.getElementById('horrorChoices').style.display='flex';
+ document.getElementById('startSub').textContent=gameMode==="pool"?'POOL ROOMS // CHOOSE MODE':'LEVEL 0 // CHOOSE MODE';
+});
+document.querySelectorAll('#horrorChoices .mode').forEach(btn=>btn.onclick=()=>{
+ playMode=btn.dataset.playmode;
+ document.getElementById('horrorChoices').style.display='none';
  document.getElementById('difficultyChoices').style.display='flex';
- document.getElementById('startSub').textContent=gameMode==="pool"?'POOL ROOMS // CHOOSE DIFFICULTY':'LEVEL 0 // CHOOSE DIFFICULTY';
+ document.getElementById('startSub').textContent=(gameMode==="pool"?'POOL ROOMS':'LEVEL 0')+' // '+(playMode==="peaceful"?'PEACEFUL':'HORROR')+' // CHOOSE DIFFICULTY';
 });
 document.getElementById('backModes').onclick=()=>{
  document.getElementById('difficultyChoices').style.display='none';
- document.getElementById('modeChoices').style.display='flex';
- document.getElementById('startSub').textContent='CHOOSE A LEVEL';
+ document.getElementById('horrorChoices').style.display='flex';
+ document.getElementById('startSub').textContent=gameMode==="pool"?'POOL ROOMS // CHOOSE MODE':'LEVEL 0 // CHOOSE MODE';
 };
 document.getElementById('pauseBtn').onclick=togglePause;
 document.getElementById('devBtn').onclick=devToExit;
@@ -1155,6 +1168,7 @@ document.getElementById('retry').onclick=()=>{
  document.getElementById('end').style.display='none';
  document.getElementById('startScreen').style.display='flex';
  document.getElementById('difficultyChoices').style.display='none';
+ document.getElementById('horrorChoices').style.display='none';
  document.getElementById('modeChoices').style.display='flex';
  document.getElementById('startSub').textContent='CHOOSE A LEVEL';
  gameStarted=false;finished=false;clearKeys();
