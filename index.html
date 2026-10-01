@@ -908,13 +908,14 @@ function render(){
     }
    }else{
     const wt=wallTexture(mx+(side?0.5:0),my+(side?0:0.5));
-    // World-space pixel variation, so the texture detail stays on the wall
-    // instead of moving with the screen.
-    const wallU=side ? (py+ry*dist) : (px+rx*dist);
-    const wallV=(y-top)/Math.max(1,line);
-    const texPixel=Math.floor(wallU*24+wallV*48);
-    const pixelNoise=((texPixel*1103515245+12345)>>>0)%8;
-    const pixelDetail=pixelNoise===0?7:(pixelNoise===7?-5:0);
+    // Every detail value comes only from the 3D wall hit position.
+    // No screen x/y coordinates are used, so the detail cannot stick to the display.
+    const hitX=px+rx*dist;
+    const hitY=py+ry*dist;
+    const detailCellX=Math.floor(hitX*32);
+    const detailCellY=Math.floor(hitY*32);
+    const detailHash=((detailCellX*374761393+detailCellY*668265263)>>>0);
+    const pixelDetail=(detailHash%11===0)?6:((detailHash%17===0)?-5:0);
     const light=Math.max(.30,Math.min(1,shade/78));
     r=(wt[0]+pixelDetail)*light*fog;
     gc=(wt[1]+pixelDetail*.7)*light*fog;
