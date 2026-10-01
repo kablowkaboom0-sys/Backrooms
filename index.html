@@ -30,7 +30,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #horrorChoices,#difficultyChoices{display:none}
 .mode{width:250px;margin:8px;padding:14px;background:#17120c;color:#ddd;border:1px solid #777;font:16px monospace;letter-spacing:2px}
 .mode:hover{background:#272016;border-color:#aaa}
-#backModes{margin-top:14px;padding:8px 18px;background:#111;color:#bbb;border:1px solid #666;font:12px monospace}
+#backModes,#backLevelsFromModes{margin-top:14px;padding:8px 18px;background:#111;color:#bbb;border:1px solid #666;font:12px monospace}
 .diff{width:220px;margin:7px;padding:12px;background:#17120c;color:#ddd;border:1px solid #666;font:15px monospace;letter-spacing:2px}
 .diff:hover{background:#272016;border-color:#aaa}
 #hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);opacity:.45;text-align:center}
@@ -61,6 +61,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <div id="modeChoices">
 <button class="mode" data-mode="level0">LEVEL 0</button>
 <button class="mode" data-mode="pool">POOL ROOMS</button>
+<button id="backLevelsFromModes">BACK TO LEVELS</button>
 </div>
 <div id="horrorChoices">
 <div class="sub">CHOOSE GAME MODE</div>
@@ -1141,6 +1142,12 @@ function openMap(){
  document.getElementById('mapPanel').style.display='flex';
 }
 function closeMap(){document.getElementById('mapPanel').style.display='none'}
+document.getElementById('backLevelsFromModes').onclick=()=>{
+ document.getElementById('modeChoices').style.display='flex';
+ document.getElementById('horrorChoices').style.display='none';
+ document.getElementById('difficultyChoices').style.display='none';
+ document.getElementById('startSub').textContent='CHOOSE A LEVEL';
+};
 document.querySelectorAll('#modeChoices .mode').forEach(btn=>btn.onclick=()=>{
  gameMode=btn.dataset.mode;
  document.getElementById('modeChoices').style.display='none';
