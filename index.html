@@ -730,6 +730,7 @@ function loop(now){
    move(1/30);
    const simNow=performance.now();
    updateEntities(simNow,1/30);
+   if(document.getElementById('mapPanel').style.display==='flex') drawDevMap();
    regenHealth(simNow);
    render();
   }catch(err){
