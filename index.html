@@ -32,6 +32,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #panel,#end{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(7,5,2,.88);color:#eee;text-align:center;z-index:5}
 #panel h1,#end h1{font-size:30px;letter-spacing:5px;margin:0 0 15px}
 #panel label{margin:8px}input[type=range]{width:220px}
+#clueRow{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px;letter-spacing:1px}
+#clueToggle{min-width:76px;padding:7px 12px;border:1px solid #888;background:#18130c;color:#eee;font:12px monospace}
+#clueToggle.on{background:#4b4226;border-color:#d8c46d;color:#fff}
 #resume,#retry{margin-top:15px;padding:10px 24px;border:1px solid #aaa;background:#18130c;color:#eee;font:14px monospace}
 #touch{position:fixed;inset:0;display:none;pointer-events:none}
 .stick{position:absolute;width:112px;height:112px;border:2px solid rgba(255,255,255,.18);border-radius:50%;background:rgba(0,0,0,.14);pointer-events:auto;box-sizing:border-box}
@@ -63,6 +66,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <h1>PAUSED</h1>
 <label>LOOK SENSITIVITY: <span id="sensVal">0.40</span></label>
 <input id="sens" type="range" min="0.10" max="1.00" step="0.05" value="0.40">
+<div id="clueRow"><span>CLUES</span><button id="clueToggle" type="button" aria-pressed="false">OFF</button></div>
 <button id="resume">RESUME</button>
 </div>
 <div id="mapPanel">
@@ -90,6 +94,9 @@ let MW=41,MH=41;
 let seed=72631,map,exitCell,px,py,pa,startTime,finished=false,paused=false,sensitivity=.004;
 let gameStarted=false;
 let playerHealth=100,lastRegen=0;
+let cluesEnabled=false;
+let cluePath=[];
+let cluePathCellX=-1,cluePathCellY=-1;
 let entities=[];
 let difficultySize=41;
 const ENTITY_SPEED=1.075; // Half the normal player's 2.15 speed.
@@ -127,6 +134,7 @@ function findExit(){
 }
 function reset(){
  map=makeMap();findExit();px=py=1.5;pa=0;startTime=performance.now();
+ cluesEnabled=false;cluePath=[];cluePathCellX=-1;cluePathCellY=-1;updateClueToggle();
  playerHealth=100;lastRegen=startTime;lastEntityThink=0;
  spawnEntities();
 
@@ -349,6 +357,113 @@ function setPix(i,r,g,b){
  pix[i]=Math.max(0,Math.min(255,r));pix[i+1]=Math.max(0,Math.min(255,g));pix[i+2]=Math.max(0,Math.min(255,b));pix[i+3]=255
 }
 
+function findCluePath(){
+ const sx=Math.floor(px),sy=Math.floor(py),tx=exitCell.x,ty=exitCell.y;
+ if(sx===tx&&sy===ty)return [];
+ const seen=Array.from({length:MH},()=>Array(MW).fill(false));
+ const prev=Array.from({length:MH},()=>Array(MW).fill(null));
+ const q=[[sx,sy]];seen[sy][sx]=true;
+ for(let i=0;i<q.length;i++){
+  const [x,y]=q[i];
+  if(x===tx&&y===ty)break;
+  for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+   const X=x+dx,Y=y+dy;
+   if(X>=0&&X<MW&&Y>=0&&Y<MH&&!seen[Y][X]&&map[Y][X]===0){
+    seen[Y][X]=true;prev[Y][X]=[x,y];q.push([X,Y]);
+   }
+  }
+ }
+ if(!seen[ty][tx])return [];
+ const path=[];let cur=[tx,ty];
+ while(cur[0]!==sx||cur[1]!==sy){
+  path.push(cur);cur=prev[cur[1]][cur[0]];
+  if(!cur)break;
+ }
+ path.reverse();
+ return path;
+}
+
+function getCluePath(){
+ const cx=Math.floor(px),cy=Math.floor(py);
+ if(cx!==cluePathCellX||cy!==cluePathCellY){
+  cluePath=findCluePath();
+  cluePathCellX=cx;cluePathCellY=cy;
+ }
+ return cluePath;
+}
+
+function drawWallArrow(wx,wy,dx,dy){
+ const vx=wx-px,vy=wy-py,dist=Math.hypot(vx,vy);
+ if(dist<.7||dist>RENDER_DISTANCE)return;
+ let da=Math.atan2(vy,vx)-pa;
+ while(da>Math.PI)da-=Math.PI*2;
+ while(da<-Math.PI)da+=Math.PI*2;
+ if(Math.abs(da)>FOV*.68)return;
+
+ const sx=W/2+(Math.tan(da)/Math.tan(FOV/2))*(W/2);
+ const ix=Math.round(sx);
+ if(ix<0||ix>=W||dist>depthBuffer[ix]+.28)return;
+
+ const forward=dx*Math.cos(pa)+dy*Math.sin(pa);
+ const right=dx*(-Math.sin(pa))+dy*Math.cos(pa);
+ const angle=Math.atan2(-forward,right);
+ const size=Math.max(3,Math.min(10,H/(dist*2.7)));
+ const cx=sx,cy=H*.48;
+
+ g.save();
+ g.translate(cx,cy);
+ g.rotate(angle);
+ g.fillStyle='rgba(245,235,180,.92)';
+ g.beginPath();
+ g.moveTo(size*1.15,0);
+ g.lineTo(size*.25,-size*.62);
+ g.lineTo(size*.25,-size*.22);
+ g.lineTo(-size*.9,-size*.22);
+ g.lineTo(-size*.9,size*.22);
+ g.lineTo(size*.25,size*.22);
+ g.lineTo(size*.25,size*.62);
+ g.closePath();
+ g.fill();
+ g.restore();
+}
+
+function drawClueArrows(){
+ if(!cluesEnabled||!map||finished)return;
+ const path=getCluePath();
+ if(!path.length)return;
+
+ // Put arrows on nearby walls along the real shortest route to the exit.
+ // They update as the player enters new maze cells, so they always point onward.
+ const samples=[];
+ let lastIndex=-99;
+ for(let i=0;i<path.length-1;i++){
+  const [x,y]=path[i], [nx,ny]=path[i+1];
+  const turn=i===0 || (path[i][0]-path[i-1][0]!==nx-x || path[i][1]-path[i-1][1]!==ny-y);
+  if(turn || i-lastIndex>=3 || i===path.length-2){
+   samples.push(i);lastIndex=i;
+  }
+ }
+ for(const i of samples){
+  const [x,y]=path[i], [nx,ny]=path[i+1];
+  const dirX=nx-x,dirY=ny-y;
+  const walls=[];
+  if(wall(x,y-1))walls.push([x+.5,y+.015]);
+  if(wall(x,y+1))walls.push([x+.5,y+.985]);
+  if(wall(x-1,y))walls.push([x+.015,y+.5]);
+  if(wall(x+1,y))walls.push([x+.985,y+.5]);
+  if(!walls.length)continue;
+
+  // Prefer a side wall perpendicular to the route so the arrow is clearly visible.
+  let pick=walls[0];
+  if(Math.abs(dirX)>Math.abs(dirY)){
+   pick=walls.find(p=>Math.abs(p[1]-(y+.5))>.4)||walls[0];
+  }else{
+   pick=walls.find(p=>Math.abs(p[0]-(x+.5))>.4)||walls[0];
+  }
+  drawWallArrow(pick[0],pick[1],dirX,dirY);
+ }
+}
+
 function entitySilhouette(gx,gy,scale){
  // Pixel-art silhouette based on the supplied entity reference:
  // large irregular head, thin long body/legs, narrow arms.
@@ -493,6 +608,7 @@ function render(){
  }
 
  g.putImageData(img,0,0);
+ drawClueArrows();
  drawEntities();
  ctx.imageSmoothingEnabled=false;
  ctx.drawImage(buf,0,0,canvas.width,canvas.height);
@@ -530,7 +646,21 @@ joystick(document.getElementById('lookStick'),document.querySelector('#lookStick
 const run=document.getElementById('run');
 run.onpointerdown=e=>{e.preventDefault();keys.shift=true};run.onpointerup=run.onpointercancel=()=>keys.shift=false;
 
-function togglePause(){if(finished)return;paused=!paused;clearKeys();document.getElementById('panel').style.display=paused?'flex':'none'}
+function updateClueToggle(){
+ const b=document.getElementById('clueToggle');
+ if(!b)return;
+ b.textContent=cluesEnabled?'ON':'OFF';
+ b.classList.toggle('on',cluesEnabled);
+ b.setAttribute('aria-pressed',String(cluesEnabled));
+}
+function toggleClues(){
+ if(finished)return;
+ cluesEnabled=!cluesEnabled;
+ cluePath=[];
+ cluePathCellX=-1;cluePathCellY=-1;
+ updateClueToggle();
+}
+function togglePause(){if(finished)return;paused=!paused;clearKeys();document.getElementById('panel').style.display=paused?'flex':'none';updateClueToggle()}
 function openMap(){
  if(finished)return;
  clearKeys();
@@ -543,7 +673,9 @@ document.getElementById('devBtn').onclick=devToExit;
 document.getElementById('mapBtn').onclick=openMap;
 document.getElementById('mapClose').onclick=closeMap;
 document.getElementById('resume').onclick=togglePause;
+document.getElementById('clueToggle').onclick=toggleClues;
 document.getElementById('retry').onclick=reset;
+updateClueToggle();
 document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
 
 let last=performance.now(),acc=0;
