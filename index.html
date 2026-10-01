@@ -140,6 +140,15 @@ const W=160,H=90,buf=document.createElement('canvas');buf.width=W;buf.height=H;
 const g=buf.getContext('2d',{alpha:false}),img=g.createImageData(W,H),pix=img.data;
 const BASE_FOV=Math.PI/3;
 let currentFOV=BASE_FOV;
+function getRenderFOV(){
+ if(aspectRatio==='native')return BASE_FOV;
+ const screenAspect=innerWidth/Math.max(1,innerHeight);
+ let targetRatio=aspectRatio==='1:1'?1:aspectRatio==='16:9'?16/9:aspectRatio==='4:3'?4/3:9/19.5;
+ // Aspect ratio changes the camera framing; gameplay ratio controls the actual
+ // on-screen rectangle.
+ const fov=2*Math.atan(Math.tan(BASE_FOV/2)*(screenAspect/targetRatio));
+ return Math.max(Math.PI/6,Math.min(Math.PI*.9,fov));
+}
 let MW=41,MH=41;
 let seed=72631,map,exitCell,px,py,pa,startTime,finished=false,paused=false,sensitivity=.004;
 let gameStarted=false;
