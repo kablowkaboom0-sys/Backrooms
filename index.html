@@ -48,6 +48,10 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #clueToggle.on{background:#4b4226;border-color:#d8c46d;color:#fff}
 #ratioRow{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;letter-spacing:1px}
 #ratioButtons{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}#ratioButtons button{padding:6px 8px;background:#18130c;color:#eee;border:1px solid #888;font:11px monospace}#ratioButtons button.active{background:#4b4226;border-color:#d8c46d;color:#fff}
+#stretchRow{display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:14px;letter-spacing:1px}
+#stretchRow label{margin:0}
+#stretch{width:220px}
+.stretchHint{font-size:9px;opacity:.48}
 #resume,#retry{margin-top:15px;padding:10px 24px;border:1px solid #aaa;background:#18130c;color:#eee;font:14px monospace}
 #touch{position:fixed;inset:0;display:none;pointer-events:none}
 .stick{position:absolute;width:112px;height:112px;border:2px solid rgba(255,255,255,.18);border-radius:50%;background:rgba(0,0,0,.14);pointer-events:auto;box-sizing:border-box}
@@ -102,6 +106,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <button type="button" data-ratio="4:3">4:3</button>
 <button type="button" data-ratio="phone">PHONE</button>
 </div></div>
+<div id="stretchRow"><label>STRETCH / SQUEEZE: <span id="stretchVal">0%</span></label>
+<input id="stretch" type="range" min="0" max="100" step="5" value="0">
+<div class="stretchHint">0% = KEEP RATIO • 100% = FILL SCREEN</div></div>
 <button id="resume">RESUME</button>
 </div>
 <div id="mapPanel">
@@ -1358,8 +1365,16 @@ document.getElementById('retry').onclick=()=>{
 };
 updateClueToggle();
 document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
-document.querySelectorAll('#ratioButtons button').forEach(btn=>btn.onclick=()=>{screenRatio=btn.dataset.ratio;document.querySelectorAll('#ratioButtons button').forEach(b=>b.classList.toggle('active',b===btn));resize()});
+document.getElementById('stretch').oninput=e=>{stretchAmount=+e.target.value;document.getElementById('stretchVal').textContent=e.target.value+'%';resize()};
+document.querySelectorAll('#ratioButtons button').forEach(btn=>btn.onclick=()=>{
+ screenRatio=btn.dataset.ratio;
+ document.querySelectorAll('#ratioButtons button').forEach(b=>b.classList.toggle('active',b===btn));
+ // Native is already the full screen, so the stretch setting only applies to fixed ratios.
+ document.getElementById('stretch').disabled=(screenRatio==='native');
+ resize();
+});
 document.querySelector('#ratioButtons button[data-ratio="native"]').classList.add('active');
+document.getElementById('stretch').disabled=true;
 
 let last=performance.now(),acc=0;
 document.querySelectorAll('.diff').forEach(btn=>btn.onclick=()=>startGame(+btn.dataset.size));
@@ -1387,6 +1402,7 @@ function loop(now){
  requestAnimationFrame(loop);
 }
 let screenRatio='native';
+let stretchAmount=0;
 function resize(){
  const sw=innerWidth,sh=innerHeight;
  let w=sw,h=sh;
@@ -1396,6 +1412,14 @@ function resize(){
   else if(screenRatio==='16:9')ratio=16/9;
   else if(screenRatio==='4:3')ratio=4/3;
   else ratio=9/19.5;
+
+  // Blend from the chosen aspect ratio to the device's actual aspect ratio.
+  // 0% preserves the chosen ratio; 100% fills the whole screen, allowing
+  // the game image to be squeezed/stretched as much as the user chooses.
+  const screenAspect=sw/Math.max(1,sh);
+  const t=Math.max(0,Math.min(1,stretchAmount/100));
+  ratio=ratio+(screenAspect-ratio)*t;
+
   if(sw/sh>ratio){h=sh;w=Math.round(h*ratio)}
   else{w=sw;h=Math.round(w/ratio)}
  }
