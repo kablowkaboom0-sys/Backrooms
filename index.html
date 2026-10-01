@@ -810,9 +810,7 @@ function drawSmiler(center,top,h,unit,dist){
  const eyeY=cy-faceH*.18;
  const eyeOffset=faceW*.22;
  
- // Subtle dark haze behind the face.
- g.fillStyle='rgba(0,0,0,.45)';
- g.fillRect(left-faceW*.25,top+h*.08,faceW*1.5,faceH*1.55);
+ // No rectangular backing: the face stays clean and transparent.
  
  // Glowing eyes.
  g.fillStyle='rgba(255,255,245,.98)';
@@ -836,12 +834,7 @@ function drawSmiler(center,top,h,unit,dist){
   g.fillRect(tx,gy,Math.max(.35,grinW/teeth*.18),grinH*1.9);
  }
  
- // Tiny glow around the face, stronger when close.
- const glow=Math.max(0,1-dist/2.8);
- if(glow>0){
-  g.fillStyle='rgba(255,245,205,'+(0.035+glow*.045)+')';
-  g.fillRect(left-faceW*.12,eyeY-eyeSize*1.2,faceW*1.24,faceH*1.7);
- }
+ // No rectangular glow layer, so the Smiler has no visible box around it.
 }
 
 function drawEntities(){
