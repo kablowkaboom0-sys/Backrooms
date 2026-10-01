@@ -118,6 +118,7 @@ let pz=0;
 let poolRoomType=[];
 let poolFloorHeight=[];
 let poolWaterDepth=[];
+let ceilingLights=[];
 const ENTITY_SPEED=1.075; // Easy mode: original entity speed (half the player's normal speed).
 const ENTITY_DAMAGE=20;
 const ENTITY_DAMAGE_COOLDOWN=1000;
@@ -239,7 +240,16 @@ function findExit(){
  exitCell={x:far[0],y:far[1]};
 }
 function reset(){
- map=gameMode==="pool"?makePoolMap():makeMap();findExit();px=startCell.x+.5;py=startCell.y+.5;pa=0;pz=poolFloorAt(px,py);startTime=performance.now();
+ map=gameMode==="pool"?makePoolMap():makeMap();findExit();
+ ceilingLights=[];
+ if(gameMode!=="pool"){
+  for(let y=1;y<MH-1;y++)for(let x=1;x<MW-1;x++){
+   if(map[y][x]!==0)continue;
+   const open=(map[y-1][x]===0?1:0)+(map[y+1][x]===0?1:0)+(map[y][x-1]===0?1:0)+(map[y][x+1]===0?1:0);
+   if(open>=2 && ((x+y)%4===0)) ceilingLights.push({x:x+.5,y:y+.5});
+  }
+ }
+ px=startCell.x+.5;py=startCell.y+.5;pa=0;pz=poolFloorAt(px,py);startTime=performance.now();
  cluesEnabled=false;cluePath=[];cluePathCellX=-1;cluePathCellY=-1;updateClueToggle();
  playerHealth=100;lastRegen=startTime;lastEntityThink=0;
  spawnEntities();
@@ -661,35 +671,40 @@ function entitySilhouette(gx,gy,scale){
  rect(2,13,1,4);rect(8,13,1,4); // hanging arms
 }
 function drawCeilingLightsSafe(){
- if(gameMode!=="level0"||!map)return;
+ if(gameMode==="pool"||!ceilingLights.length)return;
  const hz=H*.51;
- for(let n=0;n<8;n++){
-  const d=2.8+n*2.2;
-  const wx=px+Math.cos(pa)*d;
-  const wy=py+Math.sin(pa)*d;
-  const lat=Math.sin(n*2.37)*1.15;
-  const lx=wx+Math.cos(pa+Math.PI/2)*lat;
-  const ly=wy+Math.sin(pa+Math.PI/2)*lat;
-  const dx=lx-px,dy=ly-py;
+ const tanHalf=Math.tan(FOV/2);
+ for(const light of ceilingLights){
+  const dx=light.x-px,dy=light.y-py;
   const forward=dx*Math.cos(pa)+dy*Math.sin(pa);
-  if(forward<.8||forward>RENDER_DISTANCE)continue;
+  if(forward<.7||forward>RENDER_DISTANCE)continue;
   const lateral=-dx*Math.sin(pa)+dy*Math.cos(pa);
   const angle=Math.atan2(lateral,forward);
   if(Math.abs(angle)>FOV*.58)continue;
-  const sx=Math.round(W/2+(Math.tan(angle)/Math.tan(FOV/2))*(W/2));
-  const sy=Math.round(hz-(1.05/forward)*(H*.46));
-  const hw=Math.max(2,Math.round(7/forward));
-  const hh=Math.max(1,Math.round(1.2/forward));
-  for(let y=Math.max(0,sy-hh);y<=Math.min(H-1,sy+hh);y++){
-   for(let x=Math.max(0,sx-hw);x<=Math.min(W-1,sx+hw);x++){
-    if(y>=hz)continue;
-    if(depthBuffer[x]<forward-.12)continue;
+
+  const sx=W/2+(Math.tan(angle)/tanHalf)*(W/2);
+  const sy=hz-(1.05/forward)*(H*.46);
+  const hw=Math.max(1,Math.round((W*.34)/(forward*tanHalf)));
+  const hh=Math.max(1,Math.round((H*.065)/forward));
+
+  for(let y=Math.max(0,Math.floor(sy-hh));y<=Math.min(H-1,Math.ceil(sy+hh));y++){
+   if(y>=hz)continue;
+   for(let x=Math.max(0,Math.floor(sx-hw));x<=Math.min(W-1,Math.ceil(sx+hw));x++){
+    if(depthBuffer[x]<forward-.18)continue;
     const i=(y*W+x)*4;
-    pix[i]=255;pix[i+1]=252;pix[i+2]=225;
+    const edge=Math.max(Math.abs((x-sx)/Math.max(1,hw)),Math.abs((y-sy)/Math.max(1,hh)));
+    if(edge>.92){
+     pix[i]=Math.min(255,pix[i]+34);
+     pix[i+1]=Math.min(255,pix[i+1]+34);
+     pix[i+2]=Math.min(255,pix[i+2]+30);
+    }else{
+     pix[i]=255;pix[i+1]=252;pix[i+2]=226;
+    }
    }
   }
  }
 }
+
 function drawEntities(){
  for(const e of entities){
   const dx=e.x-px,dy=e.y-py,dist=Math.hypot(dx,dy);
