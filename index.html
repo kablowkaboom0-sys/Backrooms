@@ -99,7 +99,7 @@ let cluePath=[];
 let cluePathCellX=-1,cluePathCellY=-1;
 let entities=[];
 let difficultySize=41;
-const ENTITY_SPEED=1.075; // Half the normal player's 2.15 speed.
+const ENTITY_SPEED=1.075; // Easy mode: original entity speed (half the player's normal speed).
 const ENTITY_DAMAGE=20;
 const ENTITY_DAMAGE_COOLDOWN=1000;
 const ENTITY_ATTACK_RANGE=.58;
@@ -246,7 +246,12 @@ function updateEntities(now,dt){
     if(Math.hypot(tx-e.x,ty-e.y)<.18)e.path.shift();
    }
    const vx=tx-e.x,vy=ty-e.y,len=Math.hypot(vx,vy)||1;
-   const step=Math.min(ENTITY_SPEED*dt,len);
+   // Medium is 15% faster and Hard is 25% faster than the original speed.
+   // Always cap the entity at the player's current movement speed.
+   const speedMultiplier=MW===31?1.15:MW===41?1.25:1;
+   const playerSpeed=2.15*(keys.shift?1.55:1);
+   const entitySpeed=Math.min(ENTITY_SPEED*speedMultiplier,playerSpeed);
+   const step=Math.min(entitySpeed*dt,len);
    const nx=e.x+vx/len*step,ny=e.y+vy/len*step;
    if(!wall(Math.floor(nx),Math.floor(e.y)) && Math.hypot(nx-px,e.y-py)>.32)e.x=nx;
    if(!wall(Math.floor(e.x),Math.floor(ny)) && Math.hypot(e.x-px,ny-py)>.32)e.y=ny;
