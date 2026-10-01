@@ -90,7 +90,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v2</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v3</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div>
 <button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -1000,120 +1000,21 @@ function drawCeilingLightsSafe(){
  }
 }
 
+const level0EntityImage=new Image();
+level0EntityImage.src='data:image/png;base64,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';
+
 function drawLevel0Entity(center,top,h,unit,phase){
- // Smooth organic Level 0 figure based on the supplied reference:
- // oversized irregular head, extremely thin torso, long arms/legs and
- // small hand/finger ends. The movement is animated without changing AI.
- const walk=phase||0;
- const armSwing=Math.sin(walk)*1.25*unit;
- const legSwing=Math.sin(walk+Math.PI)*.95*unit;
- const bob=Math.abs(Math.sin(walk*2))*.18*unit;
- const cx=center,cy=top+bob;
-
+ // Direct cutout of the reference entity: preserve its exact thin, crooked
+ // silhouette instead of replacing it with a generic humanoid.
+ if(!level0EntityImage.complete)return;
+ const aspect=156/275;
+ const bob=Math.sin((phase||0)*.035)*Math.min(1.2,h*.012);
+ const drawH=Math.max(4,h);
+ const drawW=drawH*aspect;
  g.save();
- g.lineCap='round';
- g.lineJoin='round';
-
- // Warm Backrooms-carpet palette so the figure belongs to Level 0 instead
- // of looking like the black Pool Rooms Smiler or a chunky pixel sprite.
- const body='#b9ad87';
- const shadow='#756a4c';
- const light='#d5caa5';
-
- // Long legs first.
- g.strokeStyle=shadow;
- g.lineWidth=Math.max(.65,unit*.72);
- g.beginPath();
- g.moveTo(cx-1.35*unit,cy+13.0*unit);
- g.quadraticCurveTo(cx-1.55*unit+legSwing,cy+16.4*unit,cx-1.85*unit+legSwing,cy+20.0*unit);
- g.quadraticCurveTo(cx-2.15*unit+legSwing,cy+21.0*unit,cx-2.35*unit+legSwing,cy+21.8*unit);
- g.stroke();
- g.beginPath();
- g.moveTo(cx+1.35*unit,cy+13.0*unit);
- g.quadraticCurveTo(cx+1.55*unit-legSwing,cy+16.4*unit,cx+1.85*unit-legSwing,cy+20.0*unit);
- g.quadraticCurveTo(cx+2.15*unit-legSwing,cy+21.0*unit,cx+2.35*unit-legSwing,cy+21.8*unit);
- g.stroke();
-
- // Slightly lighter inner leg highlights.
- g.strokeStyle=light;
- g.lineWidth=Math.max(.35,unit*.22);
- g.beginPath();
- g.moveTo(cx-1.30*unit,cy+13.0*unit);
- g.lineTo(cx-1.75*unit+legSwing,cy+19.8*unit);
- g.stroke();
- g.beginPath();
- g.moveTo(cx+1.30*unit,cy+13.0*unit);
- g.lineTo(cx+1.75*unit-legSwing,cy+19.8*unit);
- g.stroke();
-
- // Thin torso: tapered and organic rather than rectangular.
- g.fillStyle=body;
- g.beginPath();
- g.moveTo(cx-.82*unit,cy+5.2*unit);
- g.quadraticCurveTo(cx-1.05*unit,cy+8.0*unit,cx-.68*unit,cy+13.5*unit);
- g.quadraticCurveTo(cx,cy+14.2*unit,cx+.68*unit,cy+13.5*unit);
- g.quadraticCurveTo(cx+1.05*unit,cy+8.0*unit,cx+.82*unit,cy+5.2*unit);
- g.quadraticCurveTo(cx,cy+4.7*unit,cx-.82*unit,cy+5.2*unit);
- g.fill();
-
- // Long curved arms with alternating swing.
- g.strokeStyle=body;
- g.lineWidth=Math.max(.7,unit*.62);
- g.beginPath();
- g.moveTo(cx-.68*unit,cy+6.0*unit);
- g.quadraticCurveTo(cx-2.45*unit,cy+7.0*unit,cx-2.8*unit-armSwing,cy+10.7*unit);
- g.quadraticCurveTo(cx-3.0*unit-armSwing,cy+12.3*unit,cx-3.35*unit-armSwing,cy+14.8*unit);
- g.stroke();
- g.beginPath();
- g.moveTo(cx+.68*unit,cy+6.0*unit);
- g.quadraticCurveTo(cx+2.45*unit,cy+7.0*unit,cx+2.8*unit+armSwing,cy+10.7*unit);
- g.quadraticCurveTo(cx+3.0*unit+armSwing,cy+12.3*unit,cx+3.35*unit+armSwing,cy+14.8*unit);
- g.stroke();
-
- // Tiny fingers/hand ends.
- g.lineWidth=Math.max(.35,unit*.24);
- for(const side of [-1,1]){
-  const sx=cx+side*(3.35*unit+side*armSwing),sy=cy+14.8*unit;
-  for(let j=-1;j<=1;j++){
-   g.beginPath();
-   g.moveTo(sx,sy);
-   g.lineTo(sx+side*(.48*unit),sy+(j*.28*unit));
-   g.stroke();
-  }
- }
-
- // Irregular oversized head.
- g.fillStyle=body;
- g.beginPath();
- g.moveTo(cx-2.15*unit,cy+1.0*unit);
- g.quadraticCurveTo(cx-2.75*unit,cy-1.0*unit,cx-1.45*unit,cy-2.65*unit);
- g.quadraticCurveTo(cx-.25*unit,cy-4.05*unit,cx+1.35*unit,cy-3.25*unit);
- g.quadraticCurveTo(cx+2.65*unit,cy-2.55*unit,cx+2.55*unit,cy-.55*unit);
- g.quadraticCurveTo(cx+2.75*unit,cy+1.15*unit,cx+1.35*unit,cy+2.0*unit);
- g.quadraticCurveTo(cx-.15*unit,cy+2.75*unit,cx-1.35*unit,cy+2.0*unit);
- g.quadraticCurveTo(cx-2.15*unit,cy+1.8*unit,cx-2.15*unit,cy+1.0*unit);
- g.fill();
-
- // Organic head shading.
- g.strokeStyle=shadow;
- g.lineWidth=Math.max(.35,unit*.25);
- g.beginPath();
- g.moveTo(cx-1.65*unit,cy-.35*unit);
- g.quadraticCurveTo(cx-.55*unit,cy-1.15*unit,cx+.65*unit,cy-.65*unit);
- g.quadraticCurveTo(cx+1.35*unit,cy-.35*unit,cx+1.75*unit,cy+.55*unit);
- g.stroke();
-
- // Subtle carpet-like mottling, deterministic from the entity phase.
- g.fillStyle='rgba(88,77,52,.28)';
- for(let i=0;i<9;i++){
-  const a=i*2.17+phase*.035;
-  const rx=Math.sin(a*1.7)*1.55*unit;
-  const ry=Math.cos(a*1.31)*2.0*unit;
-  const r=Math.max(.18,unit*(.18+(i%3)*.08));
-  g.beginPath();
-  g.arc(cx+rx,cy+ry,r,0,Math.PI*2);
-  g.fill();
- }
+ g.imageSmoothingEnabled=true;
+ g.globalAlpha=.98;
+ g.drawImage(level0EntityImage,center-drawW/2,top+bob,drawW,drawH);
  g.restore();
 }
 
