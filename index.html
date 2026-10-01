@@ -125,7 +125,7 @@ const ENTITY_DAMAGE_COOLDOWN=1000;
 const ENTITY_ATTACK_RANGE=.58;
 let lastEntityThink=0;
 const RENDER_DISTANCE=20.0;
-const FOG_START=9.0;
+const FOG_START=7.0;
 const keys={};
 const depthBuffer=new Float32Array(W);
 
@@ -868,7 +868,7 @@ function render(){
   const row=Math.abs(y-hz)+1;
   const depth=Math.min(RENDER_DISTANCE,18/row);
   const fade=horizon?Math.max(.42,1-depth*.025):Math.max(.30,1-depth*.018);
-  const fog=Math.max(.45,1-Math.max(0,depth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.55);
+  const fog=Math.max(.32,1-Math.max(0,depth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.72);
 
   if(horizon){
    const screenRow=(hz-y)/H;
@@ -944,7 +944,7 @@ function render(){
   const top=Math.max(0,((H-line)/2)|0);
   const bottom=Math.min(H,((H+line)/2)|0);
   const shade=Math.max(20,78-dist*4)*(side?.84:1);
-  const fog=Math.max(.45,1-Math.max(0,dist-FOG_START)/(RENDER_DISTANCE-FOG_START)*.55);
+  const fog=Math.max(.32,1-Math.max(0,dist-FOG_START)/(RENDER_DISTANCE-FOG_START)*.72);
 
   for(let y=top;y<bottom;y++){
    let r,gc,b;
@@ -997,7 +997,7 @@ function render(){
    const wx=px+floorCos*floorDepth;
    const wy=py+floorSin*floorDepth;
    const ct=gameMode==="pool"?poolFloorTexture(wx,wy):carpetTexture(wx,wy);
-   const depthFade=Math.max(.48,1-Math.max(0,floorDepth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.45);
+   const depthFade=Math.max(.36,1-Math.max(0,floorDepth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.60);
    const light=Math.max(.55,1-floorDepth*.018)*depthFade;
    const i=(y*W+x)*4;
    setPix(i,ct[0]*light,ct[1]*light,ct[2]*light);
