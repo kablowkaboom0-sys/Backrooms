@@ -72,7 +72,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <div id="mapPanel">
 <h1>DEV MAP</h1>
 <canvas id="mapCanvas" width="410" height="410"></canvas>
-<div>WHITE = EXIT &nbsp; • &nbsp; RED = YOU &nbsp; • &nbsp; YELLOW = PATH</div>
+<div>WHITE = EXIT &nbsp; • &nbsp; RED = YOU &nbsp; • &nbsp; BLACK = ENTITIES &nbsp; • &nbsp; YELLOW = PATH</div>
 <button id="mapClose">CLOSE MAP</button>
 </div>
 <div id="end">
@@ -162,12 +162,19 @@ function drawDevMap(){
  mctx.fillStyle='#e33';mctx.beginPath();mctx.arc(ptx,pty,Math.max(3,cs*.35),0,Math.PI*2);mctx.fill();
  mctx.strokeStyle='#f66';mctx.lineWidth=2;mctx.beginPath();
  mctx.moveTo(ptx,pty);mctx.lineTo(ptx+Math.cos(pa)*cs*1.5,pty+Math.sin(pa)*cs*1.5);mctx.stroke();
+ // Entity markers on the map.
+ for(const e of entities){
+  const ex=e.x*cs,ey=e.y*cs,er=Math.max(3,cs*.32);
+  mctx.fillStyle='#050505';
+  mctx.beginPath();mctx.arc(ex,ey,er,0,Math.PI*2);mctx.fill();
+  mctx.strokeStyle='#eee';mctx.lineWidth=Math.max(1,cs*.08);mctx.stroke();
+ }
 }
 
 function entityCountForSize(size){
  if(size===21)return 1;
  if(size===31)return 2;
- return 3;
+ return 5;
 }
 function spawnEntities(){
  entities=[];
