@@ -227,7 +227,7 @@ function poolWallTexture(x,y){
  return [218+n*12,218+n*12,205+n*10];
 }
 function findExit(){
- const d=Array.from({length:MH},()=>Array(MW).fill(-1)),q=[[1,1]];d[1][1]=0;let far=[1,1];
+ const sx=startCell.x,sy=startCell.y;const d=Array.from({length:MH},()=>Array(MW).fill(-1)),q=[[sx,sy]];d[sy][sx]=0;let far=[sx,sy];
  for(let i=0;i<q.length;i++){const [x,y]=q[i];
   if(d[y][x]>d[far[1]][far[0]])far=[x,y];
   for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
@@ -259,7 +259,7 @@ function drawDevMap(){
   mctx.fillRect(x*cs,y*cs,cs,cs);
  }
  // Start marker.
- mctx.fillStyle='#4aa3ff';mctx.fillRect(1*cs+.2*cs,1*cs+.2*cs,.6*cs,.6*cs);
+ mctx.fillStyle='#4aa3ff';mctx.fillRect(startCell.x*cs+.2*cs,startCell.y*cs+.2*cs,.6*cs,.6*cs);
  // Exit marker.
  mctx.fillStyle='#fff';mctx.fillRect(exitCell.x*cs+.08*cs,exitCell.y*cs+.08*cs,.84*cs,.84*cs);
  // Player marker.
@@ -278,8 +278,8 @@ function drawDevMap(){
 }
 
 function entityCountForSize(size){
- if(size===21)return 1;
- if(size===31)return 4;
+ if(difficultySize===21)return 1;
+ if(difficultySize===31)return 4;
  return 6;
 }
 function spawnEntities(){
@@ -288,7 +288,7 @@ function spawnEntities(){
  // Build a pool of valid corridor cells away from the player's start.
  const candidates=[];
  for(let y=1;y<MH-1;y++)for(let x=1;x<MW-1;x++){
-  if(map[y][x]===0 && Math.hypot(x+.5-1.5,y+.5-1.5)>6) candidates.push([x,y]);
+  if(map[y][x]===0 && Math.hypot(x+.5-(startCell.x+.5),y+.5-(startCell.y+.5))>6) candidates.push([x,y]);
  }
  if(!candidates.length)return;
 
