@@ -77,7 +77,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <script>
 'use strict';
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d',{alpha:false});
-const W=240,H=135,buf=document.createElement('canvas');buf.width=W;buf.height=H;
+const W=160,H=90,buf=document.createElement('canvas');buf.width=W;buf.height=H;
 const g=buf.getContext('2d',{alpha:false}),img=g.createImageData(W,H),pix=img.data;
 const FOV=Math.PI/3;
 let MW=41,MH=41;
@@ -215,95 +215,111 @@ function setPix(i,r,g,b){
 }
 
 function render(){
- if(!gameStarted||!map){
-  ctx.fillStyle='#090806';
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  return;
- }
+ // Always paint a visible fallback first. This prevents a failed frame from leaving a blank canvas.
+ ctx.fillStyle='#3b2f20';
+ ctx.fillRect(0,0,canvas.width,canvas.height);
+ if(!gameStarted||!map)return;
+
  const hz=H*.51;
- // Texture the ceiling and carpet in world space so the pattern stays attached to the level instead of burning into the screen.
- for(let y=0;y<H;y++)for(let x=0;x<W;x++){
-  if(y===hz)continue;
+
+ // Fast world-space ceiling/floor. Keep the low-resolution pixel style, but avoid
+ // expensive calculations for every screen pixel.
+ for(let y=0;y<H;y++){
+  const horizon=y<hz;
+  const row=Math.abs(y-hz)+1;
+  const depth=Math.min(RENDER_DISTANCE,18/row);
+  const fade=horizon?Math.max(.42,1-depth*.025):Math.max(.30,1-depth*.018);
+  const fog=Math.max(.58,1-Math.max(0,depth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.32);
+  const base=horizon?178:108;
+  const rr=base*fade*fog;
+  const gg=(horizon?151:21)*fade*fog;
+  const bb=(horizon?76:20)*fade*fog;
+  for(let x=0;x<W;x++)setPix((y*W+x)*4,rr,gg,bb);
+ }
+
+ // Raycast one column at a time.
+ for(let x=0;x<W;x++){
   const cam=(x/W-.5)*2;
   const ra=pa+Math.atan(cam*Math.tan(FOV/2));
   const rx=Math.cos(ra),ry=Math.sin(ra);
-  let tx,ty;
-  if(y>hz){
-   const depth=Math.min(RENDER_DISTANCE,0.72/Math.max(.5,y-hz));
-   tx=px+rx*depth;ty=py+ry*depth;
-   const q=carpetTexture(tx,ty),fade=Math.max(.32,1-depth*.035);
-   const fog=Math.max(.52,1-Math.max(0,depth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.45);
-   setPix((y*W+x)*4,q[0]*fade*fog,q[1]*fade*fog,q[2]*fade*fog);
-  }else{
-   const depth=Math.min(RENDER_DISTANCE,0.72/Math.max(.5,hz-y));
-   tx=px+rx*depth;ty=py+ry*depth;
-   const q=ceilingTexture(tx,ty),fade=Math.max(.34,1-depth*.03);
-   const fog=Math.max(.54,1-Math.max(0,depth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.42);
-   setPix((y*W+x)*4,q[0]*fade*fog,q[1]*fade*fog,q[2]*fade*fog);
-  }
- }
- // Raycast walls.
- for(let x=0;x<W;x++){
-  const cam=(x/W-.5)*2,ra=pa+Math.atan(cam*Math.tan(FOV/2));
-  const rx=Math.cos(ra),ry=Math.sin(ra);
-  let mx=Math.floor(px),my=Math.floor(py),side=0,hitExit=false;
+  let mx=Math.floor(px),my=Math.floor(py),side=0,hitExit=false,dist=RENDER_DISTANCE+1;
   const ddx=Math.abs(1/(rx||1e-9)),ddy=Math.abs(1/(ry||1e-9));
   const sx=rx<0?-1:1,sy=ry<0?-1:1;
   let sdx=rx<0?(px-mx)*ddx:(mx+1-px)*ddx;
   let sdy=ry<0?(py-my)*ddy:(my+1-py)*ddy;
-  for(let i=0;i<120;i++){
-   if(sdx<sdy){sdx+=ddx;mx+=sx;side=0}else{sdy+=ddy;my+=sy;side=1}
+
+  for(let i=0;i<80;i++){
+   if(sdx<sdy){dist=sdx;sdx+=ddx;mx+=sx;side=0}
+   else{dist=sdy;sdy+=ddy;my+=sy;side=1}
    if(wall(mx,my))break;
    if(atExit(mx,my)){hitExit=true;break}
   }
-  let dist=side===0?(mx-px+(1-sx)/2)/(rx||1e-9):(my-py+(1-sy)/2)/(ry||1e-9);
+
   if(hitExit){
    const ex=exitCell.x+.5-px,ey=exitCell.y+.5-py;
    dist=Math.max(.05,ex*rx+ey*ry);
   }
   dist=Math.max(.05,dist*Math.cos(ra-pa));
+
   if(dist>RENDER_DISTANCE){
-   for(let y=0;y<H;y++){
-    const horizonFog=y<H*.51?38:42;
-    setPix((y*W+x)*4,horizonFog+8,horizonFog+5,horizonFog-8);
-   }
    continue;
   }
-  const line=Math.min(H*2,H/dist*.92),top=(H-line)/2;
-  const shade=Math.max(8,78-dist*5)*(side?.82:1);
-  for(let y=Math.max(0,top|0);y<Math.min(H,(top+line)|0);y++){
-   const n=hash(x,y);
+
+  const line=Math.min(H*2,H/dist*.92);
+  const top=Math.max(0,((H-line)/2)|0);
+  const bottom=Math.min(H,((H+line)/2)|0);
+  const shade=Math.max(20,78-dist*4)*(side?.84:1);
+  const fog=Math.max(.62,1-Math.max(0,dist-FOG_START)/(RENDER_DISTANCE-FOG_START)*.28);
+
+  for(let y=top;y<bottom;y++){
    let r,gc,b;
    if(hitExit){
-    // Project the real exit position into screen space; the door must stay fixed in the world.
     const ex=exitCell.x+.5,ey=exitCell.y+.5;
     let da=Math.atan2(ey-py,ex-px)-pa;
     while(da>Math.PI)da-=Math.PI*2;
     while(da<-Math.PI)da+=Math.PI*2;
     const doorCenter=W/2+(Math.tan(da)/Math.tan(FOV/2))*(W/2);
-    const doorHalf=Math.max(2,Math.min(W*.34,line*.30));
+    const doorHalf=Math.max(2,line*.30);
     const edge=Math.abs(x-doorCenter)/doorHalf;
-    const door=edge<1 && y>top+line*.08 && y<top+line*.96;
-    const glow=Math.max(0,1-edge);
-    if(door){
-     const pulse=.88+.12*Math.sin(performance.now()*.006);
-     r=238*pulse+12;gc=238*pulse+12;b=232*pulse+18;
+    if(edge<1 && y>top+line*.06 && y<top+line*.97){
+     const pulse=.9+.1*Math.sin(performance.now()*.006);
+     r=245*pulse;gc=245*pulse;b=238*pulse;
     }else{
-     const v=Math.max(10,62+glow*75+(n-.5)*12);
-     r=v+12;gc=v+9;b=v+2;
+     const v=52+(1-edge)*55;
+     r=v+10;gc=v+8;b=v+3;
     }
    }else{
     const wt=wallTexture(mx+(side?0.5:0),my+(side?0:0.5));
-    const light=Math.max(.24,Math.min(1,shade/78));
-    const fog=Math.max(.55,1-Math.max(0,dist-FOG_START)/(RENDER_DISTANCE-FOG_START)*.42);
-    r=wt[0]*light*fog;gc=wt[1]*light*fog;b=wt[2]*light*fog;
+    const stripe=((x*13+y*7)&7);
+    const pixelNoise=(stripe===0?10:stripe===7?-7:0);
+    const light=Math.max(.30,Math.min(1,shade/78));
+    r=(wt[0]+pixelNoise)*light*fog;
+    gc=(wt[1]+pixelNoise*.7)*light*fog;
+    b=(wt[2]+pixelNoise*.4)*light*fog;
    }
    setPix((y*W+x)*4,r,gc,b);
   }
  }
+
+ // Make the floor texture visibly red/furry without another full 2D world projection pass.
+ for(let y=Math.max(0,Math.floor(hz)+1);y<H;y++){
+  const row=(y-hz)/H;
+  const fiberScale=10+Math.floor(row*45);
+  for(let x=0;x<W;x++){
+   const i=(y*W+x)*4;
+   const n=hash(x+fiberScale*17,y+fiberScale*31)-.5;
+   const fiber=n*18;
+   pix[i]=Math.max(0,Math.min(255,pix[i]+fiber));
+   pix[i+1]=Math.max(0,Math.min(255,pix[i+1]+fiber*.20));
+   pix[i+2]=Math.max(0,Math.min(255,pix[i+2]+fiber*.18));
+  }
+ }
+
  g.putImageData(img,0,0);
- ctx.imageSmoothingEnabled=false;ctx.drawImage(buf,0,0,canvas.width,canvas.height);
+ ctx.imageSmoothingEnabled=false;
+ ctx.drawImage(buf,0,0,canvas.width,canvas.height);
 }
+
 
 addEventListener('keydown',e=>{
  const k=e.key.toLowerCase();
@@ -357,7 +373,18 @@ document.querySelectorAll('.diff').forEach(btn=>btn.onclick=()=>startGame(+btn.d
 
 function loop(now){
  const dt=Math.min(.1,(now-last)/1000);last=now;acc+=dt;
- if(acc>=1/30){acc-=1/30;move(1/30);render();if(!paused&&!finished)document.getElementById('timer').textContent=fmt((now-startTime)/1000)}
+ if(acc>=1/30){
+  acc-=1/30;
+  try{
+   move(1/30);
+   render();
+  }catch(err){
+   console.error('Backrooms render error:',err);
+   ctx.fillStyle='#5a4525';
+   ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+  if(!paused&&!finished)document.getElementById('timer').textContent=fmt((now-startTime)/1000)
+}
  requestAnimationFrame(loop);
 }
 function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
