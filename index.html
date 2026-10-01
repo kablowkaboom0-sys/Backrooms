@@ -180,6 +180,7 @@ function pollGamepad(){
  const b=gp.buttons[1]?.pressed||false; // B = back
  const x=gp.buttons[2]?.pressed||false; // X = DEV
  const start=gp.buttons[9]?.pressed||false; // START = pause
+ const sprint=gp.buttons[7]?.pressed||false; // R2 / RT = sprint
 
  if(gamepadStatus)gamepadStatus.textContent='GAMEPAD: ON';
  const edge={
@@ -187,6 +188,7 @@ function pollGamepad(){
   a:a&&!gpPrev.a,b:b&&!gpPrev.b,x:x&&!gpPrev.x,start:start&&!gpPrev.start
  };
  gpPrev={up,down,left,right,a,b,x,start};
+ keys.shift=sprint;
  updateGamepadMenu(up,down,left,right,edge);
  handleGamepadGameplay(edge);
 }
