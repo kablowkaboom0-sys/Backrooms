@@ -907,11 +907,7 @@ function render(){
      r=v+10;gc=v+8;b=v+3;
     }
    }else{
-    // Sample the wallpaper at the actual world-space ray hit.
-    // This makes the texture stay fixed to the walls as the player turns.
-    const hitX=px+rx*dist;
-    const hitY=py+ry*dist;
-    const wt=wallTexture(hitX,hitY);
+    const wt=wallTexture(mx+(side?0.5:0),my+(side?0:0.5));
     const stripe=((x*13+y*7)&7);
     const pixelNoise=(stripe===0?10:stripe===7?-7:0);
     const light=Math.max(.30,Math.min(1,shade/78));
