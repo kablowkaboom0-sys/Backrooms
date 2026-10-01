@@ -51,10 +51,10 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #stretchRow{display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:14px;letter-spacing:1px}
 #stretchRow label{margin:0}
 #stretch{width:220px}
-#cameraRow{display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:12px;letter-spacing:1px}
-#cameraRow label{margin:0}
-.toggleBtn{padding:6px 16px;background:#4b4226;color:#fff;border:1px solid #d8c46d;font:11px monospace}
-.stretchHint{font-size:9px;opacity:.48}
+#aspectRow{display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:12px;letter-spacing:1px}
+#aspectButtons{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+#aspectButtons button{padding:6px 8px;background:#18130c;color:#eee;border:1px solid #888;font:11px monospace}
+#aspectButtons button.active{background:#4b4226;border-color:#d8c46d;color:#fff}
 #resume,#retry{margin-top:15px;padding:10px 24px;border:1px solid #aaa;background:#18130c;color:#eee;font:14px monospace}
 #touch{position:fixed;inset:0;display:none;pointer-events:none}
 .stick{position:absolute;width:112px;height:112px;border:2px solid rgba(255,255,255,.18);border-radius:50%;background:rgba(0,0,0,.14);pointer-events:auto;box-sizing:border-box}
@@ -102,19 +102,20 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <label>LOOK SENSITIVITY: <span id="sensVal">0.40</span></label>
 <input id="sens" type="range" min="0.10" max="1.00" step="0.05" value="0.40">
 <div id="clueRow"><span>CLUES</span><button id="clueToggle" type="button" aria-pressed="false">OFF</button></div>
-<div id="ratioRow"><span>SCREEN RATIO</span><div id="ratioButtons">
+<div id="ratioRow"><span>GAME PLAY RATIO</span><div id="ratioButtons">
 <button type="button" data-ratio="native">NATIVE</button>
 <button type="button" data-ratio="1:1">1:1</button>
 <button type="button" data-ratio="16:9">16:9</button>
 <button type="button" data-ratio="4:3">4:3</button>
 <button type="button" data-ratio="phone">PHONE</button>
 </div></div>
-<div id="stretchRow"><label>STRETCH / SQUEEZE: <span id="stretchVal">0%</span></label>
-<input id="stretch" type="range" min="0" max="100" step="5" value="0">
-<div class="stretchHint">0% = KEEP RATIO • 100% = FILL SCREEN</div></div>
-<div id="cameraRow"><label>CAMERA COMPENSATION: <span id="cameraVal">ON</span></label>
-<button id="cameraToggle" type="button" class="toggleBtn">ON</button>
-<div class="stretchHint">KEEPS THE VIEW FROM LOOKING ZOOMED OUT ON SMALLER RATIOS</div></div>
+<div id="aspectRow"><span>ASPECT RATIO</span><div id="aspectButtons">
+<button type="button" data-aspect="native">NATIVE</button>
+<button type="button" data-aspect="1:1">1:1</button>
+<button type="button" data-aspect="16:9">16:9</button>
+<button type="button" data-aspect="4:3">4:3</button>
+<button type="button" data-aspect="phone">PHONE</button>
+</div></div>
 <button id="resume">RESUME</button>
 </div>
 <div id="mapPanel">
@@ -139,17 +140,6 @@ const W=160,H=90,buf=document.createElement('canvas');buf.width=W;buf.height=H;
 const g=buf.getContext('2d',{alpha:false}),img=g.createImageData(W,H),pix=img.data;
 const BASE_FOV=Math.PI/3;
 let currentFOV=BASE_FOV;
-function getRenderFOV(){
- if(!cameraCompensation||screenRatio==='native')return BASE_FOV;
- const sw=innerWidth,sh=innerHeight;
- let targetRatio=screenRatio==='1:1'?1:screenRatio==='16:9'?16/9:screenRatio==='4:3'?4/3:9/19.5;
- const screenAspect=sw/Math.max(1,sh);
- const t=Math.max(0,Math.min(1,stretchAmount/100));
- targetRatio=targetRatio+(screenAspect-targetRatio)*t;
- // Preserve the perceived horizontal framing as the display gets wider/narrower.
- const fov=2*Math.atan(Math.tan(BASE_FOV/2)*(screenAspect/targetRatio));
- return Math.max(Math.PI/6,Math.min(Math.PI*0.9,fov));
-}
 let MW=41,MH=41;
 let seed=72631,map,exitCell,px,py,pa,startTime,finished=false,paused=false,sensitivity=.004;
 let gameStarted=false;
@@ -1384,23 +1374,21 @@ document.getElementById('retry').onclick=()=>{
 };
 updateClueToggle();
 document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
-document.getElementById('stretch').oninput=e=>{stretchAmount=+e.target.value;document.getElementById('stretchVal').textContent=e.target.value+'%';resize()};
-let cameraCompensation=true;
-document.getElementById('cameraToggle').onclick=()=>{
- cameraCompensation=!cameraCompensation;
- document.getElementById('cameraToggle').textContent=cameraCompensation?'ON':'OFF';
- document.getElementById('cameraVal').textContent=cameraCompensation?'ON':'OFF';
- resize();
-};
+function setActiveButtons(selector,attr,value){
+ document.querySelectorAll(selector).forEach(b=>b.classList.toggle('active',b.dataset[attr]===value));
+}
 document.querySelectorAll('#ratioButtons button').forEach(btn=>btn.onclick=()=>{
- screenRatio=btn.dataset.ratio;
- document.querySelectorAll('#ratioButtons button').forEach(b=>b.classList.toggle('active',b===btn));
- // Native is already the full screen, so the stretch setting only applies to fixed ratios.
- document.getElementById('stretch').disabled=(screenRatio==='native');
+ gamePlayRatio=btn.dataset.ratio;
+ setActiveButtons('#ratioButtons button','ratio',gamePlayRatio);
+ resize();
+});
+document.querySelectorAll('#aspectButtons button').forEach(btn=>btn.onclick=()=>{
+ aspectRatio=btn.dataset.aspect;
+ setActiveButtons('#aspectButtons button','aspect',aspectRatio);
  resize();
 });
 document.querySelector('#ratioButtons button[data-ratio="native"]').classList.add('active');
-document.getElementById('stretch').disabled=true;
+document.querySelector('#aspectButtons button[data-aspect="native"]').classList.add('active');
 
 let last=performance.now(),acc=0;
 document.querySelectorAll('.diff').forEach(btn=>btn.onclick=()=>startGame(+btn.dataset.size));
@@ -1427,28 +1415,17 @@ function loop(now){
 }
  requestAnimationFrame(loop);
 }
-let screenRatio='native';
-let stretchAmount=0;
+let gamePlayRatio='native';
+let aspectRatio='native';
 function resize(){
  const sw=innerWidth,sh=innerHeight;
  let displayW=sw,displayH=sh;
- if(screenRatio!=='native'){
-  let ratio;
-  if(screenRatio==='1:1')ratio=1;
-  else if(screenRatio==='16:9')ratio=16/9;
-  else if(screenRatio==='4:3')ratio=4/3;
-  else ratio=9/19.5;
-  const fitH=Math.round(sw/ratio);
-  const fitW=Math.round(sh*ratio);
-  let fitWidth,fitHeight;
-  if(sw/sh>ratio){fitWidth=fitH;fitHeight=sh}
-  else{fitWidth=sw;fitHeight=fitW}
-  const t=Math.max(0,Math.min(1,stretchAmount/100));
-  displayW=Math.round(fitWidth+(sw-fitWidth)*t);
-  displayH=Math.round(fitHeight+(sh-fitHeight)*t);
+ if(gamePlayRatio!=='native'){
+  let ratio=gamePlayRatio==='1:1'?1:gamePlayRatio==='16:9'?16/9:gamePlayRatio==='4:3'?4/3:9/19.5;
+  const fitH=Math.round(sw/ratio),fitW=Math.round(sh*ratio);
+  if(sw/sh>ratio){displayW=fitH;displayH=sh}
+  else{displayW=sw;displayH=fitW}
  }
- // Fixed ratios must remain genuinely fixed on screen. The stretch setting is
- // the only thing allowed to move the rectangle toward fullscreen.
  canvas.width=W;
  canvas.height=H;
  canvas.style.position='absolute';
@@ -1459,8 +1436,7 @@ function resize(){
  canvas.style.maxHeight='none';
  canvas.style.left=Math.round((sw-displayW)/2)+'px';
  canvas.style.top=Math.round((sh-displayH)/2)+'px';
-}
-addEventListener('resize',resize);resize();requestAnimationFrame(loop);
+}addEventListener('resize',resize);resize();requestAnimationFrame(loop);
 </script>
 </body>
 </html>
