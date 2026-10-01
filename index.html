@@ -509,6 +509,33 @@ function drawEntities(){
  }
 }
 
+function drawEntityGlitch(now){
+ const closest=entities.reduce((best,e)=>Math.min(best,Math.hypot(e.x-px,e.y-py)),Infinity);
+ const range=1.35;
+ if(!Number.isFinite(closest)||closest>=range||finished)return;
+ // The closer the entity, the stronger and more frequent the interference.
+ const intensity=Math.max(0,1-closest/range);
+ const pulse=Math.sin(now*.035)+Math.sin(now*.071)*.55;
+ const chance=0.08+intensity*.24;
+ if((pulse>-.25 && Math.random()<chance)||intensity>.82){
+  const bands=Math.max(1,Math.floor(1+intensity*5));
+  for(let i=0;i<bands;i++){
+   const y=Math.floor(Math.random()*H);
+   const h=Math.max(1,Math.floor(1+Math.random()*(1+intensity*3)));
+   const shift=Math.floor((Math.random()-.5)*(4+intensity*16));
+   g.drawImage(buf,0,y,W,h,shift,y,W,h);
+   g.fillStyle='rgba(235,225,185,'+(0.05+intensity*.10)+')';
+   g.fillRect(Math.random()*W,y,Math.max(2,Math.random()*W*.35),h);
+  }
+ }
+ if(intensity>.58){
+  g.fillStyle='rgba(210,205,170,'+(0.025+intensity*.045)+')';
+  for(let i=0;i<Math.floor(intensity*12);i++){
+   g.fillRect(Math.random()*W,Math.random()*H,1+Math.random()*3,1+Math.random()*2);
+  }
+ }
+}
+
 function render(){
  // Always paint a visible fallback first. This prevents a failed frame from leaving a blank canvas.
  ctx.fillStyle='#3b2f20';
@@ -615,6 +642,7 @@ function render(){
  g.putImageData(img,0,0);
  drawClueArrows();
  drawEntities();
+ drawEntityGlitch(performance.now());
  ctx.imageSmoothingEnabled=false;
  ctx.drawImage(buf,0,0,canvas.width,canvas.height);
 }
