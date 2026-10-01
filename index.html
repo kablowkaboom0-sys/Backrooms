@@ -409,10 +409,10 @@ function updateEntities(now,dt){
     if(Math.hypot(tx-e.x,ty-e.y)<.18)e.path.shift();
    }
    const vx=tx-e.x,vy=ty-e.y,len=Math.hypot(vx,vy)||1;
-   // Entities now move at the player's base walking speed.
-   // Sprinting still lets the player outrun them.
+   // Restore the previous difficulty-based entity speeds.
+   // Only Hard reaches the player's base walking speed.
    const playerBaseSpeed=2.15;
-   const entitySpeed=playerBaseSpeed;
+   const entitySpeed=MW===21?ENTITY_SPEED:MW===31?ENTITY_SPEED*1.15:playerBaseSpeed;
    const step=Math.min(entitySpeed*dt,len);
    const nx=e.x+vx/len*step,ny=e.y+vy/len*step;
    if(!wall(Math.floor(nx),Math.floor(e.y)) && Math.hypot(nx-px,e.y-py)>.32)e.x=nx;
@@ -873,7 +873,7 @@ function drawEntities(){
 
 function drawEntityGlitch(now){
  const closest=entities.reduce((best,e)=>Math.min(best,Math.hypot(e.x-px,e.y-py)),Infinity);
- const range=1.35;
+ const range=1.65;
  if(!Number.isFinite(closest)||closest>=range||finished)return;
  // The closer the entity, the stronger and more frequent the interference.
  const intensity=Math.max(0,1-closest/range);
