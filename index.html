@@ -805,8 +805,13 @@ function drawEntities(){
   while(da<-Math.PI)da+=Math.PI*2;
   if(Math.abs(da)>FOV*.62)continue;
   const center=W/2+(Math.tan(da)/Math.tan(FOV/2))*(W/2);
+  // Scale the entity continuously with perspective distance.
+  // The old integer-sized pixel unit made distant entities stay nearly the
+  // same size until a sudden step. Keeping the pixel-art silhouette but
+  // allowing fractional scaling makes far entities genuinely smaller and
+  // nearby entities genuinely larger.
   const h=Math.min(H*1.7,H/(Math.max(.35,dist))*.82);
-  const unit=Math.max(1,Math.floor(h/21));
+  const unit=Math.max(.45,h/21);
   const width=10*unit;
   const left=Math.round(center-width/2),top=Math.round(H/2-h*.47);
   // Simple column occlusion against the wall depth.
