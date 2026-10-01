@@ -894,11 +894,19 @@ function render(){
       (169+tileNoise+seam*.55)*light);
    }
   }else{
-   const base=108;
-   const rr=base*fade*fog;
-   const gg=21*fade*fog;
-   const bb=20*fade*fog;
-   for(let x=0;x<W;x++)setPix((y*W+x)*4,rr,gg,bb);
+   // Do not let Pool Rooms inherit the old Level 0 red fallback.
+   if(gameMode==="pool"){
+    const rr=178*fade*fog;
+    const gg=184*fade*fog;
+    const bb=178*fade*fog;
+    for(let x=0;x<W;x++)setPix((y*W+x)*4,rr,gg,bb);
+   }else{
+    const base=108;
+    const rr=base*fade*fog;
+    const gg=21*fade*fog;
+    const bb=20*fade*fog;
+    for(let x=0;x<W;x++)setPix((y*W+x)*4,rr,gg,bb);
+   }
   }
  }
 
