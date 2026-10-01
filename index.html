@@ -138,16 +138,16 @@ const canvas=document.getElementById('game'),ctx=canvas.getContext('2d',{alpha:f
 const W=160,H=90,buf=document.createElement('canvas');buf.width=W;buf.height=H;
 const g=buf.getContext('2d',{alpha:false}),img=g.createImageData(W,H),pix=img.data;
 const BASE_FOV=Math.PI/3;
-let currentcurrentFOV=BASE_currentFOV;
+let currentFOV=BASE_FOV;
 function getRenderFOV(){
- if(!cameraCompensation||screenRatio==='native')return BASE_currentFOV;
+ if(!cameraCompensation||screenRatio==='native')return BASE_FOV;
  const sw=innerWidth,sh=innerHeight;
  let targetRatio=screenRatio==='1:1'?1:screenRatio==='16:9'?16/9:screenRatio==='4:3'?4/3:9/19.5;
  const screenAspect=sw/Math.max(1,sh);
  const t=Math.max(0,Math.min(1,stretchAmount/100));
  targetRatio=targetRatio+(screenAspect-targetRatio)*t;
  // Preserve the perceived horizontal framing as the display gets wider/narrower.
- const fov=2*Math.atan(Math.tan(BASE_currentFOV/2)*(screenAspect/targetRatio));
+ const fov=2*Math.atan(Math.tan(BASE_FOV/2)*(screenAspect/targetRatio));
  return Math.max(Math.PI/6,Math.min(Math.PI*0.9,fov));
 }
 let MW=41,MH=41;
