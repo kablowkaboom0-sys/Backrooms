@@ -675,7 +675,7 @@ function drawCeilingLightsSafe(){
  const hz=H*.51;
  const tanHalf=Math.tan(FOV/2);
  const half=.20;
- const panelZ=1.02;
+ const panelZ=1.05;
 
  function project(wx,wy){
   const dx=wx-px,dy=wy-py;
@@ -689,16 +689,21 @@ function drawCeilingLightsSafe(){
  }
 
  for(const light of ceilingLights){
-  // Four actual world-space corners of a square ceiling panel.
+  // Ceiling tiles are 1x1 world units. Each light is anchored at the
+  // exact center of its tile (x+.5,y+.5), matching the grid texture.
+  const tileCenterX=Math.floor(light.x)+.5;
+  const tileCenterY=Math.floor(light.y)+.5;
+
+  // Four actual world-space corners of the square panel.
   const corners=[
-   project(light.x-half,light.y-half),
-   project(light.x+half,light.y-half),
-   project(light.x+half,light.y+half),
-   project(light.x-half,light.y+half)
+   project(tileCenterX-half,tileCenterY-half),
+   project(tileCenterX+half,tileCenterY-half),
+   project(tileCenterX+half,tileCenterY+half),
+   project(tileCenterX-half,tileCenterY+half)
   ];
   if(corners.some(p=>!p))continue;
 
-  const center=project(light.x,light.y);
+  const center=project(tileCenterX,tileCenterY);
   if(!center||center.d>RENDER_DISTANCE)continue;
 
   const minX=Math.max(0,Math.floor(Math.min(...corners.map(p=>p.x))));
