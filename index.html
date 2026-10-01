@@ -51,6 +51,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #stretchRow{display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:14px;letter-spacing:1px}
 #stretchRow label{margin:0}
 #stretch{width:220px}
+#cameraRow{display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:12px;letter-spacing:1px}
+#cameraRow label{margin:0}
+.toggleBtn{padding:6px 16px;background:#4b4226;color:#fff;border:1px solid #d8c46d;font:11px monospace}
 .stretchHint{font-size:9px;opacity:.48}
 #resume,#retry{margin-top:15px;padding:10px 24px;border:1px solid #aaa;background:#18130c;color:#eee;font:14px monospace}
 #touch{position:fixed;inset:0;display:none;pointer-events:none}
@@ -109,6 +112,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <div id="stretchRow"><label>STRETCH / SQUEEZE: <span id="stretchVal">0%</span></label>
 <input id="stretch" type="range" min="0" max="100" step="5" value="0">
 <div class="stretchHint">0% = KEEP RATIO • 100% = FILL SCREEN</div></div>
+<div id="cameraRow"><label>CAMERA COMPENSATION: <span id="cameraVal">ON</span></label>
+<button id="cameraToggle" type="button" class="toggleBtn">ON</button>
+<div class="stretchHint">KEEPS THE VIEW FROM LOOKING ZOOMED OUT ON SMALLER RATIOS</div></div>
 <button id="resume">RESUME</button>
 </div>
 <div id="mapPanel">
@@ -131,7 +137,19 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d',{alpha:false});
 const W=160,H=90,buf=document.createElement('canvas');buf.width=W;buf.height=H;
 const g=buf.getContext('2d',{alpha:false}),img=g.createImageData(W,H),pix=img.data;
-const FOV=Math.PI/3;
+const BASE_FOV=Math.PI/3;
+let currentcurrentFOV=BASE_currentFOV;
+function getRenderFOV(){
+ if(!cameraCompensation||screenRatio==='native')return BASE_currentFOV;
+ const sw=innerWidth,sh=innerHeight;
+ let targetRatio=screenRatio==='1:1'?1:screenRatio==='16:9'?16/9:screenRatio==='4:3'?4/3:9/19.5;
+ const screenAspect=sw/Math.max(1,sh);
+ const t=Math.max(0,Math.min(1,stretchAmount/100));
+ targetRatio=targetRatio+(screenAspect-targetRatio)*t;
+ // Preserve the perceived horizontal framing as the display gets wider/narrower.
+ const fov=2*Math.atan(Math.tan(BASE_currentFOV/2)*(screenAspect/targetRatio));
+ return Math.max(Math.PI/6,Math.min(Math.PI*0.9,fov));
+}
 let MW=41,MH=41;
 let seed=72631,map,exitCell,px,py,pa,startTime,finished=false,paused=false,sensitivity=.004;
 let gameStarted=false;
@@ -736,7 +754,7 @@ function drawCeilingLights(){
   const dx=wx-px,dy=wy-py;
   const forward=dx*Math.cos(pa)+dy*Math.sin(pa),lateral=-dx*Math.sin(pa)+dy*Math.cos(pa);
   if(forward<=.35)continue;
-  const sx=Math.round(W/2+(lateral/forward)*(W/(2*Math.tan(FOV/2))));
+  const sx=Math.round(W/2+(lateral/forward)*(W/(2*Math.tan(currentFOV/2))));
   const sy=Math.round(hz-(1.05/forward)*(H*.52));
   const halfW=Math.max(2,Math.round(8/forward)),halfH=Math.max(1,Math.round(1.5/forward));
   for(let yy=sy-halfH-2;yy<=sy+halfH+2;yy++){
@@ -825,9 +843,9 @@ function drawWallArrow(wx,wy,dx,dy){
  let da=Math.atan2(vy,vx)-pa;
  while(da>Math.PI)da-=Math.PI*2;
  while(da<-Math.PI)da+=Math.PI*2;
- if(Math.abs(da)>FOV*.68)return;
+ if(Math.abs(da)>currentFOV*.68)return;
 
- const sx=W/2+(Math.tan(da)/Math.tan(FOV/2))*(W/2);
+ const sx=W/2+(Math.tan(da)/Math.tan(currentFOV/2))*(W/2);
  const ix=Math.round(sx);
  if(ix<0||ix>=W||dist>depthBuffer[ix]+.28)return;
 
@@ -908,7 +926,7 @@ function entitySilhouette(gx,gy,scale){
 function drawCeilingLightsSafe(){
  if(gameMode==="pool"||!ceilingLights.length)return;
  const hz=H*.51;
- const tanHalf=Math.tan(FOV/2);
+ const tanHalf=Math.tan(currentFOV/2);
  const half=.20;
  const panelZ=1.05;
 
@@ -1027,8 +1045,8 @@ function drawEntities(){
   let da=Math.atan2(dy,dx)-pa;
   while(da>Math.PI)da-=Math.PI*2;
   while(da<-Math.PI)da+=Math.PI*2;
-  if(Math.abs(da)>FOV*.62)continue;
-  const center=W/2+(Math.tan(da)/Math.tan(FOV/2))*(W/2);
+  if(Math.abs(da)>currentFOV*.62)continue;
+  const center=W/2+(Math.tan(da)/Math.tan(currentFOV/2))*(W/2);
   // Perspective height shared by both entity styles.
   const h=Math.min(H*1.7,H/(Math.max(.35,dist))*.82);
   const unit=Math.max(.45,h/21);
@@ -1098,6 +1116,7 @@ function drawEntityGlitch(now){
 }
 
 function render(){
+ currentFOV=getRenderFOV();
  // Always paint a visible fallback first. This prevents a failed frame from leaving a blank canvas.
  ctx.fillStyle='#3b2f20';
  ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -1125,7 +1144,7 @@ function render(){
    const ceilingDepth=Math.min(RENDER_DISTANCE,(ceilingZ-cameraZ)*focal/Math.max(1,hz-y));
    for(let x=0;x<W;x++){
     const cam=(x/W-.5)*2;
-    const ra=pa+Math.atan(cam*Math.tan(FOV/2));
+    const ra=pa+Math.atan(cam*Math.tan(currentFOV/2));
     const wx=px+Math.cos(ra)*ceilingDepth;
     const wy=py+Math.sin(ra)*ceilingDepth;
 
@@ -1167,7 +1186,7 @@ function render(){
   // the floor naturally and no fallback color can appear as a rectangle below them.
   for(let x=0;x<W;x++){
    const cam=(x/W-.5)*2;
-   const floorRayAngle=pa+Math.atan(cam*Math.tan(FOV/2));
+   const floorRayAngle=pa+Math.atan(cam*Math.tan(currentFOV/2));
    const floorCos=Math.cos(floorRayAngle),floorSin=Math.sin(floorRayAngle);
    for(let y=Math.floor(hz)+1;y<H;y++){
     const focal=H*.92;
@@ -1188,7 +1207,7 @@ function render(){
   for(let x=0;x<W;x++){
   depthBuffer[x]=RENDER_DISTANCE+1;
   const cam=(x/W-.5)*2;
-  const ra=pa+Math.atan(cam*Math.tan(FOV/2));
+  const ra=pa+Math.atan(cam*Math.tan(currentFOV/2));
   const rx=Math.cos(ra),ry=Math.sin(ra);
   let mx=Math.floor(px),my=Math.floor(py),side=0,hitExit=false,dist=RENDER_DISTANCE+1;
   const ddx=Math.abs(1/(rx||1e-9)),ddy=Math.abs(1/(ry||1e-9));
@@ -1227,7 +1246,7 @@ function render(){
     let da=Math.atan2(ey-py,ex-px)-pa;
     while(da>Math.PI)da-=Math.PI*2;
     while(da<-Math.PI)da+=Math.PI*2;
-    const doorCenter=W/2+(Math.tan(da)/Math.tan(FOV/2))*(W/2);
+    const doorCenter=W/2+(Math.tan(da)/Math.tan(currentFOV/2))*(W/2);
     const doorHalf=Math.max(2,line*.30);
     const edge=Math.abs(x-doorCenter)/doorHalf;
     if(edge<1 && y>top+line*.06 && y<top+line*.97){
@@ -1366,6 +1385,13 @@ document.getElementById('retry').onclick=()=>{
 updateClueToggle();
 document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
 document.getElementById('stretch').oninput=e=>{stretchAmount=+e.target.value;document.getElementById('stretchVal').textContent=e.target.value+'%';resize()};
+let cameraCompensation=true;
+document.getElementById('cameraToggle').onclick=()=>{
+ cameraCompensation=!cameraCompensation;
+ document.getElementById('cameraToggle').textContent=cameraCompensation?'ON':'OFF';
+ document.getElementById('cameraVal').textContent=cameraCompensation?'ON':'OFF';
+ resize();
+};
 document.querySelectorAll('#ratioButtons button').forEach(btn=>btn.onclick=()=>{
  screenRatio=btn.dataset.ratio;
  document.querySelectorAll('#ratioButtons button').forEach(b=>b.classList.toggle('active',b===btn));
@@ -1405,30 +1431,33 @@ let screenRatio='native';
 let stretchAmount=0;
 function resize(){
  const sw=innerWidth,sh=innerHeight;
- let w=sw,h=sh;
+ let displayW=sw,displayH=sh;
  if(screenRatio!=='native'){
   let ratio;
   if(screenRatio==='1:1')ratio=1;
   else if(screenRatio==='16:9')ratio=16/9;
   else if(screenRatio==='4:3')ratio=4/3;
   else ratio=9/19.5;
-
-  // Blend from the chosen aspect ratio to the device's actual aspect ratio.
-  // 0% preserves the chosen ratio; 100% fills the whole screen, allowing
-  // the game image to be squeezed/stretched as much as the user chooses.
-  const screenAspect=sw/Math.max(1,sh);
+  const fitH=Math.round(sw/ratio);
+  const fitW=Math.round(sh*ratio);
+  let fitWidth,fitHeight;
+  if(sw/sh>ratio){fitWidth=fitH;fitHeight=sh}
+  else{fitWidth=sw;fitHeight=fitW}
   const t=Math.max(0,Math.min(1,stretchAmount/100));
-  ratio=ratio+(screenAspect-ratio)*t;
-
-  if(sw/sh>ratio){h=sh;w=Math.round(h*ratio)}
-  else{w=sw;h=Math.round(w/ratio)}
+  displayW=Math.round(fitWidth+(sw-fitWidth)*t);
+  displayH=Math.round(fitHeight+(sh-fitHeight)*t);
  }
- canvas.width=w;canvas.height=h;
- canvas.style.width=w+'px';
- canvas.style.height=h+'px';
+ // The drawing surface always matches the display rectangle. At intermediate
+ // stretch values the browser scales the fixed 160x90 game into that rectangle,
+ // so the setting visibly squeezes/stretches the image instead of only moving
+ // the letterbox bars.
+ canvas.width=W;
+ canvas.height=H;
+ canvas.style.width=displayW+'px';
+ canvas.style.height=displayH+'px';
  canvas.style.position='absolute';
- canvas.style.left=Math.round((sw-w)/2)+'px';
- canvas.style.top=Math.round((sh-h)/2)+'px';
+ canvas.style.left=Math.round((sw-displayW)/2)+'px';
+ canvas.style.top=Math.round((sh-displayH)/2)+'px';
 }
 addEventListener('resize',resize);resize();requestAnimationFrame(loop);
 </script>
