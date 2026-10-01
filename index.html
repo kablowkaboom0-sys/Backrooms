@@ -111,7 +111,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <button id="mapClose">CLOSE MAP</button>
 </div>
 <div id="end">
-<h1>LEVEL COMPLETE</h1><p id="finalTime">TIME: 00:00.0</p><p>You found the way out.</p>
+<h1 id="endTitle">LEVEL COMPLETE</h1><p id="finalTime">TIME: 00:00.0</p><p id="endMessage">You found the way out.</p>
 <button id="retry">RETRY</button>
 </div>
 <div id="touch">
@@ -425,7 +425,8 @@ function reset(){
  spawnEntities();
 
  finished=false;paused=false;document.getElementById('end').style.display='none';
- document.getElementById('end').querySelector('p:nth-of-type(2)').textContent='You found the way out.';
+ document.getElementById('endTitle').textContent='LEVEL COMPLETE';
+ document.getElementById('endMessage').textContent='You found the way out.';
  updateHealthUI();
  document.getElementById('panel').style.display='none';clearKeys();
 }
@@ -461,6 +462,8 @@ function drawDevMap(){
 function entityCountForSize(size){
  if(difficultySize===21)return 1;
  if(difficultySize===31)return 4;
+ // Hard Level 0 has 5 entities (one fewer than before). Pool Rooms keeps 6.
+ if(gameMode==="level0"&&difficultySize===41)return 5;
  return 6;
 }
 function spawnEntities(){
@@ -559,8 +562,9 @@ function updateEntities(now,dt){
 }
 function playerDown(){
  finished=true;clearKeys();
- document.getElementById('finalTime').textContent='YOU WERE CAUGHT — TIME: '+fmt((performance.now()-startTime)/1000);
- document.getElementById('end').querySelector('p:nth-of-type(2)').textContent='The entity caught you.';
+ document.getElementById('endTitle').textContent='YOU WERE CAUGHT';
+ document.getElementById('finalTime').textContent='TIME: '+fmt((performance.now()-startTime)/1000);
+ document.getElementById('endMessage').textContent='The entity caught you.';
  document.getElementById('end').style.display='flex';
 }
 function updateHealthUI(){
@@ -641,7 +645,10 @@ function move(dt){
  if(atExit(Math.floor(px),Math.floor(py)))finish();
 }
 function finish(){
- finished=true;document.getElementById('finalTime').textContent='TIME: '+fmt((performance.now()-startTime)/1000);
+ finished=true;
+ document.getElementById('endTitle').textContent='LEVEL COMPLETE';
+ document.getElementById('finalTime').textContent='TIME: '+fmt((performance.now()-startTime)/1000);
+ document.getElementById('endMessage').textContent='You found the way out.';
  document.getElementById('end').style.display='flex';clearKeys();
 }
 function devToExit(){
