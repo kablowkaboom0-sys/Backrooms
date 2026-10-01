@@ -161,7 +161,9 @@ function makePoolMap(){
  poolFloorHeight=Array.from({length:MH},()=>Array(MW).fill(0));
  poolWaterDepth=Array.from({length:MH},()=>Array(MW).fill(0));
  const rooms=[];
- const target=MW<=45?7:MW<=55?9:11;
+ // Keep individual rooms the same size, but fill the larger Pool Rooms map
+ // with roughly twice as many chambers so the level takes longer to complete.
+ const target=MW<=90?14:MW<=110?18:22;
  function overlaps(x,y,w,h){
   return rooms.some(r=>x<r.x+r.w+2&&x+w+2>r.x&&y<r.y+r.h+2&&y+h+2>r.y);
  }
