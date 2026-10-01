@@ -1447,15 +1447,16 @@ function resize(){
   displayW=Math.round(fitWidth+(sw-fitWidth)*t);
   displayH=Math.round(fitHeight+(sh-fitHeight)*t);
  }
- // The drawing surface always matches the display rectangle. At intermediate
- // stretch values the browser scales the fixed 160x90 game into that rectangle,
- // so the setting visibly squeezes/stretches the image instead of only moving
- // the letterbox bars.
+ // Fixed ratios must remain genuinely fixed on screen. The stretch setting is
+ // the only thing allowed to move the rectangle toward fullscreen.
  canvas.width=W;
  canvas.height=H;
+ canvas.style.position='absolute';
+ canvas.style.aspectRatio='auto';
  canvas.style.width=displayW+'px';
  canvas.style.height=displayH+'px';
- canvas.style.position='absolute';
+ canvas.style.maxWidth='none';
+ canvas.style.maxHeight='none';
  canvas.style.left=Math.round((sw-displayW)/2)+'px';
  canvas.style.top=Math.round((sh-displayH)/2)+'px';
 }
