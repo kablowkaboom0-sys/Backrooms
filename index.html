@@ -224,11 +224,48 @@ function makePoolMap(){
  return m;
 }
 function poolWallTexture(x,y){
- const type=poolCellType(x,y),n=texNoise(x,y);
- if(type===4)return [62+n*10,66+n*10,61+n*9];
- if(type===3)return [205+n*14,203+n*13,190+n*11];
- if(type===5)return [191+n*12,190+n*11,177+n*10];
- return [218+n*12,218+n*12,205+n*10];
+ // Pool Rooms: pale square ceramic tiles with cool grout.
+ // Everything is sampled in world space so the texture stays fixed to walls.
+ const type=poolCellType(x,y);
+ const tx=Math.floor(x*2.6),ty=Math.floor(y*2.6);
+ const lx=x-Math.floor(x),ly=y-Math.floor(y);
+ const grout=(lx<.055||ly<.055)?-30:0;
+ const n=texNoise(tx*.73,ty*.91)*5;
+
+ if(type===4){
+  return [91+n+grout*.55,104+n+grout*.55,103+n+grout*.50];
+ }
+ if(type===3){
+  return [226+n+grout,231+n+grout,224+n+grout*.8];
+ }
+ if(type===5){
+  return [210+n+grout,219+n+grout,215+n+grout*.8];
+ }
+ return [232+n+grout,238+n+grout,233+n+grout*.8];
+}
+
+function poolFloorTexture(x,y){
+ // Blue pool water for flooded chambers, pale non-slip tile for dry areas.
+ const depth=poolWaterAt(x,y);
+ const tx=Math.floor(x*5),ty=Math.floor(y*5);
+ const lx=x-Math.floor(x),ly=y-Math.floor(y);
+ const grout=(lx<.035||ly<.035)?-24:0;
+ const n=texNoise(tx*.71,ty*.83)*4;
+
+ if(depth>.01){
+  const ripple=(((tx*17+ty*31)&7)===0)?8:0;
+  const blue=depth>.3?1:.72;
+  return [
+   55+n+ripple,
+   143+n+ripple,
+   166+n+ripple
+  ].map((v,i)=>v+(i===0?0:depth*12*blue)+grout*.45);
+ }
+ return [
+  218+n+grout,
+  224+n+grout,
+  215+n+grout*.75
+ ];
 }
 function findExit(){
  const sx=startCell.x,sy=startCell.y;const d=Array.from({length:MH},()=>Array(MW).fill(-1)),q=[[sx,sy]];d[sy][sx]=0;let far=[sx,sy];
@@ -919,7 +956,9 @@ function render(){
      r=v+10;gc=v+8;b=v+3;
     }
    }else{
-    const wt=wallTexture(mx+(side?0.5:0),my+(side?0:0.5));
+    const wt=gameMode==="pool"
+      ?poolWallTexture(mx+(side?0.5:0),my+(side?0:0.5))
+      :wallTexture(mx+(side?0.5:0),my+(side?0:0.5));
     // Every detail value comes only from the 3D wall hit position.
     // No screen x/y coordinates are used, so the detail cannot stick to the display.
     const hitX=px+rx*dist;
@@ -949,7 +988,7 @@ function render(){
    const floorDepth=Math.min(RENDER_DISTANCE,.50/Math.max(.055,row));
    const wx=px+floorCos*floorDepth;
    const wy=py+floorSin*floorDepth;
-   const ct=carpetTexture(wx,wy);
+   const ct=gameMode==="pool"?poolFloorTexture(wx,wy):carpetTexture(wx,wy);
    const depthFade=Math.max(.55,1-Math.max(0,floorDepth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.18);
    const light=Math.max(.55,1-floorDepth*.018)*depthFade;
    const i=(y*W+x)*4;
