@@ -799,6 +799,51 @@ function drawCeilingLightsSafe(){
  }
 }
 
+function drawSmiler(center,top,h,unit,dist){
+ // Pool Rooms entity: a floating Smiler face, with its body hidden in
+ // darkness. It stays as a simple pixel-art face while scaling with depth.
+ const faceW=Math.max(.9,h*.34);
+ const faceH=Math.max(.7,h*.23);
+ const cx=center,cy=top+h*.42;
+ const left=cx-faceW/2, right=cx+faceW/2;
+ const eyeSize=Math.max(.35,h*.055);
+ const eyeY=cy-faceH*.18;
+ const eyeOffset=faceW*.22;
+ 
+ // Subtle dark haze behind the face.
+ g.fillStyle='rgba(0,0,0,.45)';
+ g.fillRect(left-faceW*.25,top+h*.08,faceW*1.5,faceH*1.55);
+ 
+ // Glowing eyes.
+ g.fillStyle='rgba(255,255,245,.98)';
+ g.fillRect(cx-eyeOffset-eyeSize/2,eyeY-eyeSize/2,eyeSize,eyeSize);
+ g.fillRect(cx+eyeOffset-eyeSize/2,eyeY-eyeSize/2,eyeSize,eyeSize);
+ 
+ // Wide curved-looking pixel grin made from short bright segments.
+ const grinW=faceW*.78;
+ const grinH=Math.max(.6,h*.075);
+ const gx=grinW/2;
+ const gy=cy+faceH*.18;
+ g.fillRect(cx-gx,gy,grinW,grinH);
+ g.fillRect(cx-gx*.82,gy+grinH,grinW*.82,grinH*.7);
+ g.fillRect(cx-gx*.64,gy+grinH*1.7,grinW*.64,grinH*.55);
+ 
+ // Small dark cuts break the grin into teeth-like pixels.
+ g.fillStyle='rgba(8,8,8,.85)';
+ const teeth=Math.max(3,Math.floor(grinW/1.8));
+ for(let i=1;i<teeth;i++){
+  const tx=cx-grinW/2+i*(grinW/teeth);
+  g.fillRect(tx,gy,Math.max(.35,grinW/teeth*.18),grinH*1.9);
+ }
+ 
+ // Tiny glow around the face, stronger when close.
+ const glow=Math.max(0,1-dist/2.8);
+ if(glow>0){
+  g.fillStyle='rgba(255,245,205,'+(0.035+glow*.045)+')';
+  g.fillRect(left-faceW*.12,eyeY-eyeSize*1.2,faceW*1.24,faceH*1.7);
+ }
+}
+
 function drawEntities(){
  for(const e of entities){
   const dx=e.x-px,dy=e.y-py,dist=Math.hypot(dx,dy);
@@ -808,11 +853,7 @@ function drawEntities(){
   while(da<-Math.PI)da+=Math.PI*2;
   if(Math.abs(da)>FOV*.62)continue;
   const center=W/2+(Math.tan(da)/Math.tan(FOV/2))*(W/2);
-  // Scale the entity continuously with perspective distance.
-  // The old integer-sized pixel unit made distant entities stay nearly the
-  // same size until a sudden step. Keeping the pixel-art silhouette but
-  // allowing fractional scaling makes far entities genuinely smaller and
-  // nearby entities genuinely larger.
+  // Perspective height shared by both entity styles.
   const h=Math.min(H*1.7,H/(Math.max(.35,dist))*.82);
   const unit=Math.max(.45,h/21);
   const width=9*unit;
@@ -823,13 +864,18 @@ function drawEntities(){
    if(dist<depthBuffer[sx]){visible=true;break}
   }
   if(!visible)continue;
-  g.fillStyle='#090909';
-  entitySilhouette(left,top,h);
-  // Subtle light edge so the silhouette remains visible in dark rooms.
-  g.fillStyle='rgba(35,35,30,.8)';
-  const eyeY=top+Math.max(1,unit*6);
-  g.fillRect(center-unit,eyeY,unit,unit);
-  g.fillRect(center+unit,eyeY,unit,unit);
+  
+  if(gameMode==="pool"){
+   drawSmiler(center,top,h,unit,dist);
+  }else{
+   g.fillStyle='#090909';
+   entitySilhouette(left,top,h);
+   // Subtle light edge so the silhouette remains visible in dark rooms.
+   g.fillStyle='rgba(35,35,30,.8)';
+   const eyeY=top+Math.max(1,unit*6);
+   g.fillRect(center-unit,eyeY,unit,unit);
+   g.fillRect(center+unit,eyeY,unit,unit);
+  }
  }
 }
 
