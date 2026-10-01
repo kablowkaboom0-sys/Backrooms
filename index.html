@@ -661,6 +661,7 @@ function entitySilhouette(gx,gy,scale){
  rect(2,13,1,4);rect(8,13,1,4); // hanging arms
 }
 function drawCeilingFixtures(){
+ const hz=H*.51;
  if(gameMode!=="level0"||!map)return;
 
  // Fluorescent panels live in world space, not screen space.
@@ -912,8 +913,8 @@ function render(){
   }
  }
 
- g.putImageData(img,0,0);
  drawCeilingFixtures();
+ g.putImageData(img,0,0);
  drawClueArrows();
  drawEntities();
  drawEntityGlitch(performance.now());
