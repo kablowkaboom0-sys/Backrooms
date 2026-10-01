@@ -1429,8 +1429,8 @@ let aspectRatio='native';
 function resize(){
  const sw=innerWidth,sh=innerHeight;
  let displayW=sw,displayH=sh;
- if(gamePlayRatio!=='native'){
-  let ratio=gamePlayRatio==='1:1'?1:gamePlayRatio==='16:9'?16/9:gamePlayRatio==='4:3'?4/3:9/19.5;
+ if(aspectRatio!=='native'){
+  let ratio=aspectRatio==='1:1'?1:aspectRatio==='16:9'?16/9:aspectRatio==='4:3'?4/3:9/19.5;
   const fitH=Math.round(sw/ratio),fitW=Math.round(sh*ratio);
   if(sw/sh>ratio){displayW=fitH;displayH=sh}
   else{displayW=sw;displayH=fitW}
