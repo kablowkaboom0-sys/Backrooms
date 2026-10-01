@@ -131,6 +131,7 @@ function reset(){
  spawnEntities();
 
  finished=false;paused=false;document.getElementById('end').style.display='none';
+ document.getElementById('end').querySelector('p:nth-of-type(2)').textContent='You found the way out.';
  updateHealthUI();
  document.getElementById('panel').style.display='none';clearKeys();
 }
