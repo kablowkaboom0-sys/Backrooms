@@ -411,7 +411,7 @@ function regenHealth(now){
 
 function wall(x,y){return x<0||y<0||x>=MW||y>=MH||map[y][x]===1}
 function startGame(size){
- MW=gameMode==="pool"?(size===21?45:size===31?55:65):size;
+ MW=gameMode==="pool"?(size===21?90:size===31?110:130):size;
  MH=MW;difficultySize=size;
  startCell=gameMode==="pool"?{x:1,y:1}:{x:1,y:1};gameStarted=true;
  document.getElementById('startScreen').style.display='none';
