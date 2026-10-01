@@ -577,7 +577,7 @@ function updateStaminaUI(){
  fill.style.background=pct<=10?'#b44':(pct<=25?'#c8a84d':'#d5d0b5');
  text.textContent=Math.ceil(pct)+' / 100';
  const exhausted=pct<=25;
- const blurAmount=exhausted?Math.min(3.2,Math.max(0,(25-pct)/15*3.2)):0;
+ const blurAmount=pct<=25?Math.min(5,0.4+((25-pct)/25)*4.6):0;
  canvas.style.filter=blurAmount>0?'blur('+blurAmount.toFixed(2)+'px)':'none';
 }
 function updateStamina(now,dt){
@@ -1041,6 +1041,21 @@ function drawEntities(){
  }
 }
 
+function drawStaminaVision(){
+ const pct=Math.max(0,Math.min(100,playerStamina));
+ if(!gameStarted||finished||pct>25)return;
+ // Low stamina adds an increasingly dense, warm fog over the world.
+ const intensity=Math.min(.58,.08+((25-pct)/25)*.50);
+ g.fillStyle='rgba(225,218,188,'+intensity.toFixed(3)+')';
+ g.fillRect(0,0,W,H);
+ // Slightly heavier haze toward the edges to make the loss of vision feel stronger.
+ const edge=Math.min(.28,intensity*.55);
+ g.fillStyle='rgba(225,218,188,'+edge.toFixed(3)+')';
+ g.fillRect(0,0,W,5);
+ g.fillRect(0,H-5,W,5);
+ g.fillRect(0,0,5,H);
+ g.fillRect(W-5,0,5,H);
+}
 function drawEntityGlitch(now){
  const closest=entities.reduce((best,e)=>Math.min(best,Math.hypot(e.x-px,e.y-py)),Infinity);
  const range=1.65;
@@ -1237,6 +1252,7 @@ function render(){
  drawClueArrows();
  drawEntities();
  drawEntityGlitch(performance.now());
+ drawStaminaVision();
  ctx.imageSmoothingEnabled=false;
  ctx.drawImage(buf,0,0,canvas.width,canvas.height);
 }
