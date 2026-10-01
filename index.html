@@ -660,73 +660,6 @@ function entitySilhouette(gx,gy,scale){
  rect(4,12,1,8);rect(6,12,1,8); // legs
  rect(2,13,1,4);rect(8,13,1,4); // hanging arms
 }
-function drawCeilingFixtures(){
- const hz=H*.51;
- if(gameMode!=="level0"||!map)return;
-
- // Fluorescent panels live in world space, not screen space.
- // We sample open maze cells so fixtures stay attached to the room.
- for(let cy=2;cy<MH-1;cy+=4){
-  for(let cx=2;cx<MW-1;cx+=4){
-   if(map[cy][cx]!==0)continue;
-
-   const wx=cx+.5,wy=cy+.5;
-   const dx=wx-px,dy=wy-py;
-   const forward=dx*Math.cos(pa)+dy*Math.sin(pa);
-   if(forward<1.0||forward>12)continue;
-
-   const lateral=-dx*Math.sin(pa)+dy*Math.cos(pa);
-   const angle=Math.atan2(lateral,forward);
-   if(Math.abs(angle)>FOV*.60)continue;
-
-   // Project the ceiling-mounted fixture.
-   const sx=W/2+(Math.tan(angle)/Math.tan(FOV/2))*(W/2);
-   const sy=hz-(1.02/forward)*(H*.46);
-   const halfW=Math.max(2,Math.min(13,Math.round(7.5/forward)));
-   const halfH=Math.max(1,Math.min(3,Math.round(1.7/forward)));
-
-   // Do not draw a fixture through a wall.
-   let visible=false;
-   for(let x=Math.max(0,Math.floor(sx-halfW-1));x<=Math.min(W-1,Math.ceil(sx+halfW+1));x++){
-    if(forward<depthBuffer[x]-.08){visible=true;break}
-   }
-   if(!visible)continue;
-
-   // Very soft light around the panel, followed by the solid fluorescent body.
-   for(let yy=Math.floor(sy-halfH-3);yy<=Math.ceil(sy+halfH+3);yy++){
-    if(yy<0||yy>=H||yy>=hz)continue;
-    for(let xx=Math.floor(sx-halfW-3);xx<=Math.ceil(sx+halfW+3);xx++){
-     if(xx<0||xx>=W)continue;
-     if(forward>depthBuffer[xx]+.08)continue;
-     const ex=Math.abs(xx-sx)/(halfW+3);
-     const ey=Math.abs(yy-sy)/(halfH+3);
-     const edge=Math.max(ex,ey);
-     if(edge>1)continue;
-     const glow=(1-edge)*.12;
-     const i=(yy*W+xx)*4;
-     pix[i]=Math.min(255,pix[i]+245*glow);
-     pix[i+1]=Math.min(255,pix[i+1]+242*glow);
-     pix[i+2]=Math.min(255,pix[i+2]+225*glow);
-    }
-   }
-
-   // Long rectangular fluorescent panel.
-   const left=Math.max(0,Math.round(sx-halfW));
-   const right=Math.min(W-1,Math.round(sx+halfW));
-   const top=Math.max(0,Math.round(sy-halfH));
-   const bottom=Math.min(Math.floor(hz)-1,Math.round(sy+halfH));
-   for(let yy=top;yy<=bottom;yy++){
-    for(let xx=left;xx<=right;xx++){
-     if(forward>depthBuffer[xx]-.05)continue;
-     const i=(yy*W+xx)*4;
-     pix[i]=255;
-     pix[i+1]=252;
-     pix[i+2]=226;
-    }
-   }
-  }
-}
-
 function drawEntities(){
  for(const e of entities){
   const dx=e.x-px,dy=e.y-py,dist=Math.hypot(dx,dy);
@@ -913,7 +846,6 @@ function render(){
   }
  }
 
- drawCeilingFixtures();
  g.putImageData(img,0,0);
  drawClueArrows();
  drawEntities();
