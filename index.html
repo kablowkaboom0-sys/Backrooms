@@ -42,7 +42,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #clueToggle{min-width:76px;padding:7px 12px;border:1px solid #888;background:#18130c;color:#eee;font:12px monospace}
 #clueToggle.on{background:#4b4226;border-color:#d8c46d;color:#fff}
 #ratioRow{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;letter-spacing:1px}
-#ratioSelect{padding:6px 9px;background:#18130c;color:#eee;border:1px solid #888;font:12px monospace}
+#ratioButtons{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}#ratioButtons button{padding:6px 8px;background:#18130c;color:#eee;border:1px solid #888;font:11px monospace}#ratioButtons button.active{background:#4b4226;border-color:#d8c46d;color:#fff}
 #resume,#retry{margin-top:15px;padding:10px 24px;border:1px solid #aaa;background:#18130c;color:#eee;font:14px monospace}
 #touch{position:fixed;inset:0;display:none;pointer-events:none}
 .stick{position:absolute;width:112px;height:112px;border:2px solid rgba(255,255,255,.18);border-radius:50%;background:rgba(0,0,0,.14);pointer-events:auto;box-sizing:border-box}
@@ -82,13 +82,13 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <label>LOOK SENSITIVITY: <span id="sensVal">0.40</span></label>
 <input id="sens" type="range" min="0.10" max="1.00" step="0.05" value="0.40">
 <div id="clueRow"><span>CLUES</span><button id="clueToggle" type="button" aria-pressed="false">OFF</button></div>
-<div id="ratioRow"><span>SCREEN RATIO</span><select id="ratioSelect">
-<option value="native">NATIVE</option>
-<option value="1:1">1:1</option>
-<option value="16:9">16:9</option>
-<option value="4:3">4:3</option>
-<option value="phone">PHONE</option>
-</select></div>
+<div id="ratioRow"><span>SCREEN RATIO</span><div id="ratioButtons">
+<button type="button" data-ratio="native">NATIVE</button>
+<button type="button" data-ratio="1:1">1:1</button>
+<button type="button" data-ratio="16:9">16:9</button>
+<button type="button" data-ratio="4:3">4:3</button>
+<button type="button" data-ratio="phone">PHONE</button>
+</div></div>
 <button id="resume">RESUME</button>
 </div>
 <div id="mapPanel">
@@ -1161,7 +1161,8 @@ document.getElementById('retry').onclick=()=>{
 };
 updateClueToggle();
 document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
-document.getElementById('ratioSelect').onchange=e=>{screenRatio=e.target.value;resize()};
+document.querySelectorAll('#ratioButtons button').forEach(btn=>btn.onclick=()=>{screenRatio=btn.dataset.ratio;document.querySelectorAll('#ratioButtons button').forEach(b=>b.classList.toggle('active',b===btn));resize()});
+document.querySelector('#ratioButtons button[data-ratio="native"]').classList.add('active');
 
 let last=performance.now(),acc=0;
 document.querySelectorAll('.diff').forEach(btn=>btn.onclick=()=>startGame(+btn.dataset.size));
