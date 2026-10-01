@@ -711,8 +711,11 @@ function drawClueArrows(){
 function entitySilhouette(gx,gy,scale){
  // Pixel-art silhouette based on the supplied entity reference:
  // large irregular head, thin long body/legs, narrow arms.
- const unit=Math.max(1,Math.floor(scale/12));
- const rect=(x,y,w,h)=>g.fillRect(Math.round(gx+x*unit),Math.round(gy+y*unit),Math.max(1,w*unit),Math.max(1,h*unit));
+ // Use the full projected height for the unit size. Do not quantize the
+ // body parts to a minimum 1-pixel size, otherwise distant entities stay
+ // visually large even when their perspective height becomes tiny.
+ const unit=Math.max(.04,scale/21);
+ const rect=(x,y,w,h)=>g.fillRect(gx+x*unit,gy+y*unit,w*unit,h*unit);
  rect(4,0,3,1);rect(3,1,5,2);rect(2,3,6,2);rect(3,5,5,2);
  rect(4,7,3,5); // torso
  rect(3,8,1,5);rect(7,8,1,5); // arms
@@ -812,7 +815,7 @@ function drawEntities(){
   // nearby entities genuinely larger.
   const h=Math.min(H*1.7,H/(Math.max(.35,dist))*.82);
   const unit=Math.max(.45,h/21);
-  const width=10*unit;
+  const width=9*unit;
   const left=Math.round(center-width/2),top=Math.round(H/2-h*.47);
   // Simple column occlusion against the wall depth.
   let visible=false;
@@ -825,8 +828,8 @@ function drawEntities(){
   // Subtle light edge so the silhouette remains visible in dark rooms.
   g.fillStyle='rgba(35,35,30,.8)';
   const eyeY=top+Math.max(1,unit*6);
-  g.fillRect(Math.round(center-unit),Math.round(eyeY),Math.max(1,unit),Math.max(1,unit));
-  g.fillRect(Math.round(center+unit),Math.round(eyeY),Math.max(1,unit),Math.max(1,unit));
+  g.fillRect(center-unit,eyeY,unit,unit);
+  g.fillRect(center+unit,eyeY,unit,unit);
  }
 }
 
