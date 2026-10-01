@@ -16,6 +16,11 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 .healthBar{height:10px;border:1px solid rgba(255,255,255,.45);background:#120e0a}
 #healthFill{height:100%;width:100%;background:#d5d0b5;transition:width .12s}
 #healthText{font-size:10px;margin-top:3px;opacity:.75}
+#staminaUI{position:absolute;top:116px;left:12px;width:150px;opacity:.9;letter-spacing:1px}
+.staminaLabel{font-size:10px;margin-bottom:3px}
+.staminaBar{height:10px;border:1px solid rgba(255,255,255,.45);background:#120e0a}
+#staminaFill{height:100%;width:100%;background:#d5d0b5;transition:width .08s,background .15s}
+#staminaText{font-size:10px;margin-top:3px;opacity:.75}
 #pauseBtn{position:absolute;top:34px;right:12px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#ddd;border:1px solid #777;font:12px monospace}
 #devBtn{position:absolute;top:34px;right:142px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#fff;border:1px solid #777;font:12px monospace}
 #mapBtn{position:absolute;top:34px;right:78px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#fff;border:1px solid #777;font:12px monospace}
@@ -80,6 +85,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <div id="title">BACKROOMS // LEVEL 0</div>
 <div id="timer">00:00.0</div><div id="version">v1</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
+<div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div>
 <button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
 <div id="cross"></div>
 <div id="hint">WASD / ARROWS TO MOVE • MOUSE OR Q/E TO LOOK • FIND THE EXIT</div>
@@ -123,6 +129,13 @@ let MW=41,MH=41;
 let seed=72631,map,exitCell,px,py,pa,startTime,finished=false,paused=false,sensitivity=.004;
 let gameStarted=false;
 let playerHealth=100,lastRegen=0;
+let playerStamina=100,lastStaminaUpdate=0;
+const STAMINA_MAX=100;
+const STAMINA_DRAIN_PER_SEC=10; // 10 seconds of continuous sprinting empties the bar.
+const STAMINA_REGEN_PER_SEC=100/30; // 30 seconds from empty to full.
+const BASE_SPEED=2.15;
+const SPRINT_MULTIPLIER=2;
+const LOW_STAMINA_THRESHOLD=.10;
 let cluesEnabled=false;
 let cluePath=[];
 let cluePathCellX=-1,cluePathCellY=-1;
@@ -406,6 +419,7 @@ function reset(){
   }
  }
  px=startCell.x+.5;py=startCell.y+.5;pa=0;pz=poolFloorAt(px,py);startTime=performance.now();
+ playerStamina=STAMINA_MAX;lastStaminaUpdate=startTime;updateStaminaUI();
  cluesEnabled=false;cluePath=[];cluePathCellX=-1;cluePathCellY=-1;updateClueToggle();
  playerHealth=100;lastRegen=startTime;lastEntityThink=0;
  spawnEntities();
@@ -555,6 +569,32 @@ function updateHealthUI(){
  fill.style.width=playerHealth+'%';
  text.textContent=Math.ceil(playerHealth)+' / 100';
 }
+function updateStaminaUI(){
+ const fill=document.getElementById('staminaFill');
+ const text=document.getElementById('staminaText');
+ const pct=Math.max(0,Math.min(100,playerStamina));
+ fill.style.width=pct+'%';
+ fill.style.background=pct<=10?'#b44':(pct<=25?'#c8a84d':'#d5d0b5');
+ text.textContent=Math.ceil(pct)+' / 100';
+ const exhausted=pct<=25;
+ const blurAmount=exhausted?Math.min(3.2,Math.max(0,(25-pct)/15*3.2)):0;
+ canvas.style.filter=blurAmount>0?'blur('+blurAmount.toFixed(2)+'px)':'none';
+}
+function updateStamina(now,dt){
+ if(!gameStarted||paused||finished){
+  lastStaminaUpdate=now;
+  return;
+ }
+ const f=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0);
+ const strafe=(keys.d?1:0)-(keys.a?1:0);
+ const moving=Math.abs(f)>0||Math.abs(strafe)>0;
+ const sprinting=keys.shift&&moving&&playerStamina>0.001;
+ if(sprinting)playerStamina=Math.max(0,playerStamina-STAMINA_DRAIN_PER_SEC*dt);
+ else playerStamina=Math.min(STAMINA_MAX,playerStamina+STAMINA_REGEN_PER_SEC*dt);
+ if(playerStamina<=0.001)playerStamina=0;
+ updateStaminaUI();
+ lastStaminaUpdate=now;
+}
 function regenHealth(now){
  if(playerHealth>=100)return;
  if(now-lastRegen>=5000){
@@ -589,7 +629,11 @@ function move(dt){
  let s=(keys.d?1:0)-(keys.a?1:0);
  if(keys.q||keys.arrowleft)pa-=dt*1.8;
  if(keys.e||keys.arrowright)pa+=dt*1.8;
- const sp=2.15*(keys.shift?1.55:1),ca=Math.cos(pa),sa=Math.sin(pa);
+ const fMoving=Math.abs(f)>0||Math.abs(s)>0;
+ const sprinting=keys.shift&&fMoving&&playerStamina>0.001;
+ const exhaustedBase=playerStamina<=LOW_STAMINA_THRESHOLD;
+ const baseSpeed=exhaustedBase?BASE_SPEED*.8:BASE_SPEED;
+ const sp=baseSpeed*(sprinting?SPRINT_MULTIPLIER:1),ca=Math.cos(pa),sa=Math.sin(pa);
  const dx=(ca*f-sa*s)*sp*dt,dy=(sa*f+ca*s)*sp*dt,r=.2;
  if(!wall(Math.floor(px+dx+r*Math.sign(dx)),Math.floor(py)))px+=dx;
  if(!wall(Math.floor(px),Math.floor(py+dy+r*Math.sign(dy))))py+=dy;
@@ -1308,6 +1352,7 @@ function loop(now){
    updateEntities(simNow,1/30);
    if(document.getElementById('mapPanel').style.display==='flex') drawDevMap();
    regenHealth(simNow);
+   updateStamina(simNow,1/30);
    render();
   }catch(err){
    console.error('Backrooms render error:',err);
