@@ -141,12 +141,10 @@ const g=buf.getContext('2d',{alpha:false}),img=g.createImageData(W,H),pix=img.da
 const BASE_FOV=Math.PI/3;
 let currentFOV=BASE_FOV;
 function getRenderFOV(){
- if(aspectRatio==='native')return BASE_FOV;
- const screenAspect=innerWidth/Math.max(1,innerHeight);
- let targetRatio=aspectRatio==='1:1'?1:aspectRatio==='16:9'?16/9:aspectRatio==='4:3'?4/3:9/19.5;
- // Aspect ratio changes the camera framing; gameplay ratio controls the actual
- // on-screen rectangle.
- const fov=2*Math.atan(Math.tan(BASE_FOV/2)*(screenAspect/targetRatio));
+ if(gamePlayRatio==='native')return BASE_FOV;
+ const targetRatio=gamePlayRatio==='1:1'?1:gamePlayRatio==='16:9'?16/9:gamePlayRatio==='4:3'?4/3:9/19.5;
+ // Keep the vertical field of view consistent with the selected gameplay frame.
+ const fov=2*Math.atan(Math.tan(BASE_FOV/2)*(targetRatio/(16/9)));
  return Math.max(Math.PI/6,Math.min(Math.PI*.9,fov));
 }
 let MW=41,MH=41;
@@ -1430,10 +1428,9 @@ function resize(){
  const sw=innerWidth,sh=innerHeight;
  let displayW=sw,displayH=sh;
  if(aspectRatio!=='native'){
-  let ratio=aspectRatio==='1:1'?1:aspectRatio==='16:9'?16/9:aspectRatio==='4:3'?4/3:9/19.5;
-  const fitH=Math.round(sw/ratio),fitW=Math.round(sh*ratio);
-  if(sw/sh>ratio){displayW=fitH;displayH=sh}
-  else{displayW=sw;displayH=fitW}
+  const ratio=aspectRatio==='1:1'?1:aspectRatio==='16:9'?16/9:aspectRatio==='4:3'?4/3:9/19.5;
+  if(sw/sh>ratio){displayW=Math.round(sh*ratio);displayH=sh}
+  else{displayW=sw;displayH=Math.round(sw/ratio)}
  }
  canvas.width=W;
  canvas.height=H;
