@@ -169,6 +169,7 @@ function drawDevMap(){
   mctx.beginPath();mctx.arc(ex,ey,er,0,Math.PI*2);mctx.fill();
   mctx.strokeStyle='#eee';mctx.lineWidth=Math.max(1,cs*.08);mctx.stroke();
  }
+ // Entity movement is animated while the map is open by using their live positions.
 }
 
 function entityCountForSize(size){
