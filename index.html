@@ -182,17 +182,17 @@ function pollGamepad(){
  const start=gp.buttons[9]?.pressed||false; // START = pause
 
  if(gamepadStatus)gamepadStatus.textContent='GAMEPAD: ON';
- updateGamepadMenu(up,down,left,right,a,b);
- handleGamepadGameplay(a,b,x,start);
+ const edge={
+  up:up&&!gpPrev.up,down:down&&!gpPrev.down,left:left&&!gpPrev.left,right:right&&!gpPrev.right,
+  a:a&&!gpPrev.a,b:b&&!gpPrev.b,x:x&&!gpPrev.x,start:start&&!gpPrev.start
+ };
+ gpPrev={up,down,left,right,a,b,x,start};
+ updateGamepadMenu(up,down,left,right,edge);
+ handleGamepadGameplay(edge);
 }
 let gpPrev={up:false,down:false,left:false,right:false,a:false,b:false,x:false,start:false};
 let gpMenuIndex=0;
 let gpMenuItems=[];
-function gpPressed(name,value){
- const pressed=value&&!gpPrev[name];
- gpPrev[name]=value;
- return pressed;
-}
 function visibleMenuItems(){
  const start=document.getElementById('startScreen');
  if(start.style.display!=='none'){
@@ -207,29 +207,32 @@ function visibleMenuItems(){
  if(document.getElementById('end').style.display==='flex')return [document.getElementById('retry')];
  return [];
 }
-function updateGamepadMenu(up,down,left,right,a,b){
+function updateGamepadMenu(up,down,left,right,edge){
  const items=visibleMenuItems();
  if(!items.length)return;
  if(items!==gpMenuItems){gpMenuItems=items;gpMenuIndex=0;}
  let changed=false;
- if(gpPressed('up',up)){gpMenuIndex=(gpMenuIndex-1+items.length)%items.length;changed=true;}
- if(gpPressed('down',down)){gpMenuIndex=(gpMenuIndex+1)%items.length;changed=true;}
+ if(edge.up){gpMenuIndex=(gpMenuIndex-1+items.length)%items.length;changed=true;}
+ if(edge.down){gpMenuIndex=(gpMenuIndex+1)%items.length;changed=true;}
  if(changed)items[gpMenuIndex].focus();
- if(gpPressed('a',a))items[gpMenuIndex].click();
- if(gpPressed('b',b)){
+ if(edge.a)items[gpMenuIndex].click();
+ if(edge.b){
   if(document.getElementById('mapPanel').style.display==='flex')closeMap();
   else if(document.getElementById('panel').style.display==='flex')togglePause();
   else if(document.getElementById('horrorChoices').style.display!=='none')document.getElementById('backLevelsFromModes').click();
   else if(document.getElementById('difficultyChoices').style.display!=='none')document.getElementById('backModes').click();
  }
 }
-function handleGamepadGameplay(a,b,x,start){
+function handleGamepadGameplay(edge){
  if(!gameStarted)return;
- if(gpPressed('start',start))togglePause();
- if(gpPressed('b',b)&&document.getElementById('mapPanel').style.display==='flex')closeMap();
- if(gpPressed('a',a)&&document.getElementById('mapPanel').style.display==='flex')closeMap();
- if(gpPressed('a',a)&&document.getElementById('panel').style.display==='flex')document.getElementById('resume').click();
- if(gpPressed('x',x)&&!paused&&!finished)devToExit();
+ if(edge.start)togglePause();
+ if(edge.b&&document.getElementById('mapPanel').style.display==='flex')closeMap();
+ if(edge.a){
+  if(document.getElementById('mapPanel').style.display==='flex')closeMap();
+  else if(document.getElementById('panel').style.display==='flex')document.getElementById('resume').click();
+  else if(!paused&&!finished)openMap();
+ }
+ if(edge.x&&!paused&&!finished)devToExit();
 }
 
 addEventListener('gamepadconnected',e=>{gamepadIndex=e.gamepad.index;gamepadConnected=true});
