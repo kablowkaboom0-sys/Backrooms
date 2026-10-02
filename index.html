@@ -106,7 +106,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v32</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v33</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div><div id="balanceUI"><div class="balanceLabel">BALANCE</div><div class="balanceBar"><div id="balanceFill"></div></div><div id="balanceText">CENTER</div></div><div id="originalObjective"></div>
 <button id="objectiveBtn">OBJECTIVE</button><button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -185,6 +185,7 @@ let originalMode=false;
 let robloxMode=false;
 let robloxArrowCells=[];
 let robloxExitCell=null;
+let robloxMapLoadId=0;
 let originalRoomZones=[];
 let poolOriginalMode=false;
 let poolOriginalDarkRooms=[];
@@ -1786,17 +1787,24 @@ function rebuildLevel0CeilingLights(){
   }
  }
 }
-function reset(){
+async function reset(){
  if(robloxMode){
+  const loadId=++robloxMapLoadId;
   map=null;
-  makeRobloxBackroomsMap().then(m=>{
-   if(!gameStarted||!robloxMode)return;
-   map=m;findExit();
+  try{
+   const m=await makeRobloxBackroomsMap();
+   if(loadId!==robloxMapLoadId||!gameStarted||!robloxMode||gameMode!=="level0")return;
+   map=m;
+   findExit();
    rebuildLevel0CeilingLights();
    px=startCell.x+.5;py=startCell.y+.5;pa=0;pz=0;startTime=performance.now();
    spawnEntities();
-  });
-  return;
+   return;
+  }catch(err){
+   console.error('Roblox Backrooms map load failed:',err);
+   map=null;
+   return;
+  }
  }
  map=poolOriginalMode?makeOriginalPoolMap():(gameMode==="pool"?makePoolMap():(originalMode?makeOriginalMap():makeMap()));findExit();
  if(poolOriginalMode)updatePoolOriginalObjective();
@@ -1822,8 +1830,18 @@ function drawDevMap(){
  const cs=mc.width/MW;
  mctx.clearRect(0,0,mc.width,mc.height);
  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){
-  if(map[y][x]===2)mctx.fillStyle='#050505';
-  else if(map[y][x])mctx.fillStyle='#17120c';
+  let isWall=map[y]?.[x]===1;
+  if(robloxMode){
+   isWall=false;
+   const bx=x*ROBLOX_MAP_SCALE,by=y*ROBLOX_MAP_SCALE;
+   for(let oy=0;oy<ROBLOX_MAP_SCALE&&!isWall;oy++){
+    for(let ox=0;ox<ROBLOX_MAP_SCALE;ox++){
+     if(map[by+oy]?.[bx+ox]===1){isWall=true;break;}
+    }
+   }
+  }
+  if(map[y]?.[x]===2)mctx.fillStyle='#050505';
+  else if(isWall)mctx.fillStyle='#17120c';
   else mctx.fillStyle='#c7a95b';
   mctx.fillRect(x*cs,y*cs,cs,cs);
  }
@@ -2011,6 +2029,7 @@ function regenHealth(now){
 
 function wall(x,y){
  if(robloxMode){
+  if(!map)return true;
   const gx=Math.floor(x*ROBLOX_MAP_SCALE),gy=Math.floor(y*ROBLOX_MAP_SCALE);
   if(gx<0||gy<0||gx>=ROBLOX_MAP_W||gy>=ROBLOX_MAP_H)return true;
   return map[gy][gx]===1;
@@ -2020,6 +2039,11 @@ function wall(x,y){
  return map[y][x]===1;
 }
 function startGame(size){
+ if(robloxMode){
+  gameMode="level0";
+  originalMode=false;
+  poolOriginalMode=false;
+ }
  MW=poolOriginalMode?150:(robloxMode?180:(gameMode==="pool"?(size===21?90:size===31?110:130):(originalMode?152:size)));
  MH=poolOriginalMode?120:(robloxMode?133:(gameMode==="pool"?MW:(originalMode?127:size)));
  difficultySize=size;
@@ -2683,7 +2707,8 @@ function render(){
   let sdx=rx<0?(rayPX-mx)*ddx:(mx+1-rayPX)*ddx;
   let sdy=ry<0?(rayPY-my)*ddy:(my+1-rayPY)*ddy;
 
-  for(let i=0;i<80;i++){
+  const raySteps=robloxMode?512:80;
+  for(let i=0;i<raySteps;i++){
    if(sdx<sdy){dist=sdx;sdx+=ddx;mx+=sx;side=0}
    else{dist=sdy;sdy+=ddy;my+=sy;side=1}
    if(!robloxMode&&originalMode&&atExitWallCell(mx,my)){hitExit=true;hitExitCell={x:mx,y:my};break;}
