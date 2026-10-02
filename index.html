@@ -1805,6 +1805,13 @@ async function reset(){
    findExit();
    rebuildLevel0CeilingLights();
    px=startCell.x+.5;py=startCell.y+.5;pa=0;pz=0;startTime=performance.now();
+   playerStamina=STAMINA_MAX;lastStaminaUpdate=startTime;updateStaminaUI();
+   playerHealth=100;lastRegen=startTime;lastEntityThink=0;
+   cluesEnabled=false;cluePath=[];cluePathCellX=-1;cluePathCellY=-1;updateClueToggle();
+   finished=false;paused=false;
+   document.getElementById('end').style.display='none';
+   document.getElementById('panel').style.display='none';
+   clearKeys();
    spawnEntities();
    return;
   }catch(err){
@@ -2791,16 +2798,21 @@ function render(){
       }
      }else{r=30;gc=24;b=18;}
     }else{
-     if(edge<=frameHalf&&yNorm>.02&&yNorm<.99){
-      const inside=edge<innerHalf&&yNorm>.07&&yNorm<.95;
-      if(inside){
-       const glow=.86+.14*Math.sin(performance.now()*.004);
-       r=225*glow;gc=232*glow;b=218*glow;
-       if(yNorm>.86){r=128;gc=119;b=94;}
-      }else{
-       r=edge<innerHalf+1?72:31;gc=edge<innerHalf+1?63:25;b=edge<innerHalf+1?43:18;
-      }
-     }else{r=36;gc=29;b=20;}
+     // Pitfall door: render the whole hit wall column as a wooden door.
+     // This prevents the actual door cell from looking like an ordinary
+     // Level 0 wall with only a small screen-space marker on top.
+     const doorPhase=Math.floor((x+doorCenter)*.5)%4;
+     const plank=doorPhase===0?-10:0;
+     const trim=(edge>frameHalf*.88||yNorm<.035||yNorm>.965);
+     if(trim){
+      r=34;gc=23;b=14;
+     }else{
+      r=76+plank;gc=43+plank*.45;b=22+plank*.25;
+      const braceA=Math.abs((yNorm-.5)-((x-doorCenter)/Math.max(1,line))*.32)<.055;
+      const braceB=Math.abs((yNorm-.5)+((x-doorCenter)/Math.max(1,line))*.32)<.055;
+      if(braceA||braceB){r=112;gc=67;b=31;}
+      if(yNorm>.82){r=54;gc=32;b=17;}
+     }
     }
    }else{
     const wallWorldX=robloxMode?mx/ROBLOX_MAP_SCALE:mx;
