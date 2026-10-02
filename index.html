@@ -2077,14 +2077,19 @@ function atExitWallCell(x,y){return originalMode&&exitCells.some(e=>x===e.x&&y==
 function atExit(x,y){
  if(!exitCells.length)return false;
  if(!originalMode)return exitCells.some(e=>x===e.x&&y===e.y);
- for(let i=0;i<exitEntryCells.length;i++){
-  const e=exitEntryCells[i];
-  const near=Math.abs(x-e[0])<=1&&Math.abs(y-e[1])<=1;
-  if(!near)continue;
-  const name=exitCells[i]?.name||'';
-  // Exits activate by simply reaching their entrance. No Control/crouch
-  // requirement, so the marked exits are actually usable in normal play.
-  if(name==='NORMAL EXIT')return originalLadderClimbed&&originalHasKey&&originalDoorOpen&&originalPitCrossed&&!originalLowerRoute;
+ for(let i=0;i<exitCells.length;i++){
+  const e=exitCells[i];
+  const entry=exitEntryCells[i];
+  const entryNear=entry&&Math.abs(x-entry[0])<=1&&Math.abs(y-entry[1])<=1;
+  const exitNear=Math.abs(x-e.x)<=1&&Math.abs(y-e.y)<=1;
+  if(!entryNear&&!exitNear)continue;
+  const name=e?.name||'';
+  // The exit wall itself is intentionally solid, so completion is triggered
+  // when the player reaches the walkable space immediately in front of it.
+  // This avoids requiring the player to clip through the exit wall.
+  if(name==='NORMAL EXIT'){
+   return originalLadderClimbed&&originalHasKey&&originalDoorOpen&&originalPitCrossed&&!originalLowerRoute;
+  }
   if(name==='ALTERNATE EXIT')return originalLowerRoute;
  }
  return false;
