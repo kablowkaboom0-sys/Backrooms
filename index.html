@@ -133,7 +133,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <button id="resume">RESUME</button>
 </div>
 <div id="objectivePanel"><h2>ORIGINAL MODE OBJECTIVE</h2><div id="objectiveCurrent">Find the broken ladder and collect all 4 pieces.</div><ol id="objectiveSteps"><li>Find the broken ladder room.</li><li>Collect all 4 ladder pieces with F / INTERACT.</li><li>Repair the ladder, climb it, and take the key.</li><li>Find the wooden door and unlock it with the key.</li><li>Cross the Pitfalls by balancing with Q/E.</li><li>Reach the vent on the far side to escape.</li><li>If you fall, follow the wall arrows to the alternate vent.</li></ol><button id="objectiveClose" type="button">CLOSE</button></div>
-<div id="devPanel"><h2>DEV SETTINGS</h2><div class="devSection"><div>TELEPORT TO EXIT</div><button id="devExit1">EXIT 1</button><button id="devExit2">EXIT 2</button></div><div class="devSection"><button id="devLadder">OBTAIN ALL LADDER PIECES</button><button id="devLadderFront">TELEPORT IN FRONT OF LADDER</button><button id="devKey">GET KEY</button></div><button id="devClose">CLOSE</button></div>
+<div id="devPanel"><h2>DEV SETTINGS</h2><div class="devSection"><div>TELEPORT TO EXIT</div><button id="devExit1">EXIT 1</button><button id="devExit2">EXIT 2</button></div><div class="devSection"><button id="devLadder">OBTAIN ALL LADDER PIECES</button><button id="devLadderFront1">TELEPORT IN FRONT OF LADDER PIECE 1</button><button id="devLadderFront2">TELEPORT IN FRONT OF LADDER PIECE 2</button><button id="devLadderFront3">TELEPORT IN FRONT OF LADDER PIECE 3</button><button id="devLadderFront4">TELEPORT IN FRONT OF LADDER PIECE 4</button><button id="devKey">GET KEY</button></div><button id="devClose">CLOSE</button></div>
 <div id="mapPanel">
 <h1>DEV MAP</h1>
 <canvas id="mapCanvas" width="410" height="343"></canvas>
@@ -182,6 +182,7 @@ let difficultySize=41;
 let originalMode=false;
 let originalRoomZones=[];
 let originalLadderPieces=[];
+let originalLadderPieceSpawns=[];
 let originalLadderCollected=0;
 let originalLadderFixed=false;
 let originalLadderClimbed=false;
@@ -2225,9 +2226,11 @@ function devTeleportToExit(index){
  clearKeys();
  closeDevPanel();
 }
-function devTeleportToLadder(){
- if(!originalMode||!originalLadderCell)return;
- const lx=originalLadderCell.x,ly=originalLadderCell.y;
+function devTeleportToLadderPiece(index){
+ if(!originalMode)return;
+ const piece=originalLadderPieceSpawns[index];
+ if(!piece)return;
+ const lx=piece.x,ly=piece.y;
  const spots=[[lx,ly+1],[lx,ly-1],[lx+1,ly],[lx-1,ly]];
  const spot=spots.find(([x,y])=>x>=0&&y>=0&&x<MW&&y<MH&&map[y]?.[x]===0);
  if(spot){
@@ -2239,6 +2242,8 @@ function devTeleportToLadder(){
   py=ly+1.5;
   pa=Math.PI/2;
  }
+ // Teleporting only changes the player's position. It does NOT remove the
+ // ladder piece or increment the collected-piece counter.
  clearKeys();
  closeDevPanel();
 }
@@ -2264,7 +2269,10 @@ document.getElementById('devClose').onclick=closeDevPanel;
 document.getElementById('devExit1').onclick=()=>devTeleportToExit(0);
 document.getElementById('devExit2').onclick=()=>devTeleportToExit(1);
 document.getElementById('devLadder').onclick=devObtainLadderPieces;
-document.getElementById('devLadderFront').onclick=devTeleportToLadder;
+document.getElementById('devLadderFront1').onclick=()=>devTeleportToLadderPiece(0);
+document.getElementById('devLadderFront2').onclick=()=>devTeleportToLadderPiece(1);
+document.getElementById('devLadderFront3').onclick=()=>devTeleportToLadderPiece(2);
+document.getElementById('devLadderFront4').onclick=()=>devTeleportToLadderPiece(3);
 document.getElementById('devKey').onclick=devGetKey;
 
 document.getElementById('objectiveBtn').onclick=()=>{
