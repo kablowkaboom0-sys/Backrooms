@@ -2518,21 +2518,26 @@ function render(){
     setPix((y*W+x)*4,cr*light,cg*light,cb*light);
    }
   }else{
-   // Pool Rooms has no Level 0 carpet fallback.
-   // Keep uncovered/distant pixels dark instead of creating a flat grey
-   // "floor section" that looks like another room opening in the distance.
+   // The fallback below the horizon must be the actual floor, not a solid
+   // brown/red strip. The real floor pass overwrites reachable pixels below,
+   // while this texture-backed fallback covers only the extremely distant
+   // pixels and the horizon row where the floor converges.
    if(gameMode==="pool"){
     const rr=22*fade*fog;
     const gg=32*fade*fog;
     const bb=35*fade*fog;
     for(let x=0;x<W;x++)setPix((y*W+x)*4,rr,gg,bb);
    }else{
-    // Level 0/Roblox/Original must never expose a red fallback through the
-    // distant floor. Roblox uses the same tan carpet family as its Lobby floor.
-    const rr=originalMode?78:robloxMode?142:108;
-    const gg=originalMode?70:robloxMode?124:21;
-    const bb=originalMode?52:robloxMode?88:20;
-    for(let x=0;x<W;x++)setPix((y*W+x)*4,rr*fade*fog,gg*fade*fog,bb*fade*fog);
+    for(let x=0;x<W;x++){
+     const cam=(x/W-.5)*2;
+     const floorRayAngle=pa+Math.atan(cam*Math.tan(currentFOV/2));
+     const farX=px+Math.cos(floorRayAngle)*RENDER_DISTANCE;
+     const farY=py+Math.sin(floorRayAngle)*RENDER_DISTANCE;
+     const ft=carpetTexture(farX,farY);
+     const farFog=Math.max(.18,1-.62);
+     const farLight=Math.max(.32,1-RENDER_DISTANCE*.018)*farFog;
+     setPix((y*W+x)*4,ft[0]*farLight,ft[1]*farLight,ft[2]*farLight);
+    }
    }
   }
  }
