@@ -91,7 +91,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v14</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v15</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div>
 <button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -302,71 +302,86 @@ function makeOriginalMap(){
    if(xx>0&&yy>0&&xx<MW-1&&yy<MH-1)m[yy][xx]=0;
   }
  };
- const carveH=(x1,x2,y)=>{
-  for(let x=Math.min(x1,x2);x<=Math.max(x1,x2);x++)for(let oy=-1;oy<=1;oy++){
-   if(x>0&&y+oy>0&&x<MW-1&&y+oy<MH-1)m[y+oy][x]=0;
-  }
+ const carveH=(x1,x2,y,w=3)=>{
+  const a=Math.min(x1,x2),b=Math.max(x1,x2),r=Math.floor(w/2);
+  for(let x=a;x<=b;x++)for(let yy=y-r;yy<=y+r;yy++)if(x>0&&yy>0&&x<MW-1&&yy<MH-1)m[yy][x]=0;
  };
- const carveV=(x,y1,y2)=>{
-  for(let y=Math.min(y1,y2);y<=Math.max(y1,y2);y++)for(let ox=-1;ox<=1;ox++){
-   if(x+ox>0&&y>0&&x+ox<MW-1&&y<MH-1)m[y][x+ox]=0;
-  }
+ const carveV=(x,y1,y2,w=3)=>{
+  const a=Math.min(y1,y2),b=Math.max(y1,y2),r=Math.floor(w/2);
+  for(let y=a;y<=b;y++)for(let xx=x-r;xx<=x+r;xx++)if(xx>0&&y>0&&xx<MW-1&&y<MH-1)m[y][xx]=0;
  };
 
- // Fixed floor plan based on the supplied Level 0 map:
- // left grid room -> large central section -> upper section,
- // right chamber -> long lower-right branch.
- carveRect(5,22,16,14);
- carveRect(20,23,31,23);
- carveRect(28,8,17,17);
- carveRect(50,27,10,10);
- carveRect(54,36,9,21);
- carveRect(61,47,12,9);
- carveRect(44,45,12,9);
+ // Original Mode is a hand-built approximation of the supplied Level 0
+ // floor-plan image. The large shapes and dead-end branches follow the
+ // reference rather than using the normal generated maze.
+ //
+ // LEFT: small entrance -> gridded room -> CENTRAL block
+ carveH(1,9,30,5);
+ carveRect(8,23,13,13);
 
- // Main connections.
- carveH(20,27,29);
- carveH(44,50,31);
- carveV(54,35,47);
- carveH(57,67,51);
- carveH(39,50,45);
+ // CENTRAL: large irregular block.
+ carveRect(20,27,34,18);
+ carveRect(30,38,24,9);
+ carveRect(42,37,12,16);
 
- // Left spawn corridor.
- carveH(1,5,29);
+ // UPPER: tall block rising from the central area.
+ carveRect(31,10,17,19);
+ carveRect(36,7,9,6);
+ carveRect(37,3,7,5);
+ carveH(38,42,10,5);
 
- // Add room-like internal wall patterns to mimic the reference layout.
- for(let x=8;x<=19;x+=3)for(let y=23;y<=34;y+=3){
-  if((x+y)%6!==0)m[y][x]=1;
- }
- for(let x=23;x<=48;x+=5){
-  if(x!==38)for(let y=26;y<=43;y+=5)m[y][x]=1;
- }
- for(let y=12;y<=22;y+=4){
-  for(let x=30;x<=43;x+=5)if((x+y)%10!==0)m[y][x]=1;
- }
- for(let y=29;y<=35;y+=3)for(let x=52;x<=58;x+=3)m[y][x]=1;
- for(let y=40;y<=53;y+=4)for(let x=56;x<=61;x+=3)m[y][x]=1;
+ // RIGHT: small square chamber and the long lower-right branch.
+ carveRect(54,38,10,9);
+ carveRect(58,46,8,12);
+ carveRect(62,50,10,8);
 
- // Re-open the main corridors after the decorative wall pattern.
- carveH(20,28,29);
- carveH(43,51,31);
- carveV(54,35,48);
- carveH(57,67,51);
- carveH(39,50,45);
- carveH(1,5,29);
+ // LOWER CENTRAL section.
+ carveRect(37,45,18,10);
 
- // Player spawn is the small left-side entrance shown on the map.
- startCell={x:2,y:29};
+ // Connect the major sections exactly at their narrow junctions.
+ carveH(19,22,30,5);
+ carveH(47,54,42,5);
+ carveV(61,42,50,5);
+ carveH(53,62,51,5);
+ carveH(48,58,49,5);
 
- // Multiple exits are deliberately placed in different sections of the
- // original-style floor plan.
+ // Re-create the distinctive dead-end/corner branches visible in the image.
+ // Leftmost dead end.
+ carveH(1,8,30,3);
+ // Top dead end.
+ carveV(40,3,10,3);
+ // Right-side dead end into the small square.
+ carveH(54,63,42,3);
+ // Bottom-right dead end.
+ carveV(63,51,58,3);
+
+ // A few fixed internal walls create the large-room / corridor structure
+ // visible in the reference without turning it back into a random maze.
+ for(let y=26;y<=34;y++)if(y!==30)m[y][25]=1;
+ for(let y=27;y<=39;y++)if(y!==31&&y!==36)m[y][34]=1;
+ for(let x=40;x<=52;x++)if(x!==45&&x!==49)m[36][x]=1;
+ for(let x=42;x<=52;x++)if(x!==47)m[48][x]=1;
+ for(let y=40;y<=49;y++)if(y!==42&&y!==46)m[y][53]=1;
+
+ // Re-open the important junctions so the whole floor-plan stays connected.
+ carveH(19,23,30,5);
+ carveH(31,38,30,3);
+ carveH(47,54,42,5);
+ carveV(61,42,51,5);
+ carveH(53,63,51,3);
+ carveV(63,51,58,3);
+
+ startCell={x:3,y:30};
+
+ // Exits are placed at dead-end corners/branches of the supplied layout:
+ // far-left entrance, top tip, right chamber tip, and bottom-right tip.
  exitCells=[
-  {x:43,y:10},
-  {x:58,y:31},
-  {x:70,y:51},
-  {x:47,y:52}
+  {x:2,y:30},
+  {x:40,y:3},
+  {x:63,y:42},
+  {x:63,y:57}
  ];
- for(const e of exitCells)m[e.y][e.x]=0;
+ for(const ex of exitCells)m[ex.y][ex.x]=0;
  exitCell=exitCells[0];
  return m;
 }
