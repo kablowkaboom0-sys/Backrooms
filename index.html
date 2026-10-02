@@ -32,7 +32,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #objectiveClose{display:block;margin:14px auto 0;padding:7px 18px;background:#18130c;color:#eee;border:1px solid #888;font:12px monospace}
 #mapPanel{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(7,5,2,.94);color:#eee;z-index:6}
 #mapPanel h1{font-size:24px;letter-spacing:4px;margin:0 0 10px}
-#mapCanvas{width:min(82vw,82vh);height:min(82vw,82vh);image-rendering:pixelated;border:2px solid #777;background:#111}
+#mapCanvas{width:min(88vw,78vh);height:auto;aspect-ratio:152/127;image-rendering:pixelated;border:2px solid #777;background:#111}
 #mapClose{margin-top:14px;padding:9px 22px;background:#18130c;color:#eee;border:1px solid #aaa;font:14px monospace}
 #startScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#090806;color:#ddd;text-align:center;z-index:10}
 #startScreen h1{font-size:34px;letter-spacing:7px;margin:0 0 8px}
@@ -98,7 +98,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v24</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v25</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div><div id="balanceUI"><div class="balanceLabel">BALANCE</div><div class="balanceBar"><div id="balanceFill"></div></div><div id="balanceText">CENTER</div></div><div id="originalObjective"></div>
 <button id="objectiveBtn">OBJECTIVE</button><button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -129,7 +129,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <div id="objectivePanel"><h2>ORIGINAL MODE OBJECTIVE</h2><div id="objectiveCurrent">Find the broken ladder and collect all 4 pieces.</div><ol id="objectiveSteps"><li>Find the broken ladder room.</li><li>Collect all 4 ladder pieces with F / INTERACT.</li><li>Repair the ladder, climb it, and take the key.</li><li>Find the wooden door and unlock it with the key.</li><li>Cross the Pitfalls by balancing with Q/E.</li><li>Reach the vent on the far side to escape.</li><li>If you fall, follow the wall arrows to the alternate vent.</li></ol><button id="objectiveClose" type="button">CLOSE</button></div>
 <div id="mapPanel">
 <h1>DEV MAP</h1>
-<canvas id="mapCanvas" width="410" height="410"></canvas>
+<canvas id="mapCanvas" width="410" height="343"></canvas>
 <div>WHITE = EXIT &nbsp; • &nbsp; RED = YOU &nbsp; • &nbsp; BLACK = ENTITIES &nbsp; • &nbsp; YELLOW = PATH</div>
 <button id="mapClose">CLOSE MAP</button>
 </div>
@@ -140,7 +140,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <div id="touch">
 <div class="stick" id="moveStick"><div class="knob"></div></div>
 <div class="stick" id="lookStick"><div class="knob"></div></div>
-<button id="run">RUN</button><button id="interactBtn">INTERACT</button><button id="crouchBtn">CROUCH</button>
+<button id="run">RUN</button><button id="interactBtn">INTERACT</button><button id="crouchBtn" aria-pressed="false">CROUCH: OFF</button>
 </div>
 <script>
 'use strict';
@@ -356,7 +356,8 @@ function setupOriginalMechanics(m){
  originalRoomZones=[
   {name:'PILLAR ROOM',x1:108,y1:42,x2:140,y2:67},
   {name:'LADDER ROOM',x1:62,y1:4,x2:108,y2:44},
-  {name:'PITFALLS',x1:58,y1:54,x2:151,y2:92},
+  // The checkerboard Pitfalls are the large left-hand room relative to the fixed spawn.
+  {name:'PITFALLS',x1:56,y1:46,x2:151,y2:106},
   {name:'LOWER LEVEL',x1:105,y1:88,x2:151,y2:126},
   {name:'MANILA ROOM',x1:137,y1:101,x2:151,y2:116},
   {name:'LEVEL 0.2 AREA',x1:142,y1:113,x2:151,y2:126}
@@ -417,7 +418,9 @@ function setupOriginalMechanics(m){
   return best||{x:tx,y:ty};
  }
  const exitTargets=[
-  {x:132,y:92,name:'NORMAL EXIT'},
+  // Normal vent: far end of the Pitfalls room, opposite the approach door.
+  {x:58,y:50,name:'NORMAL EXIT'},
+  // Alternate vent: lower-layer route after falling through the Pitfalls.
   {x:143,y:124,name:'ALTERNATE EXIT'}
  ];
  exitCells=exitTargets.map(e=>snapExitWall(e.x,e.y));
@@ -430,13 +433,13 @@ function setupOriginalMechanics(m){
   return ns.find(([x,y])=>x>=0&&y>=0&&x<MW&&y<MH&&m[y][x]===0)||[e.x,e.y];
  });
 
- // The locked door is snapped to a real wall on the approach to the Pitfalls.
+ // The locked wooden door is on the right-hand approach to the Pitfalls, matching the reference map.
  let door=null,db=Infinity;
- for(let y=55;y<=75;y++)for(let x=55;x<=78;x++){
+ for(let y=50;y<=68;y++)for(let x=136;x<=150;x++){
   if(m[y]?.[x]!==1)continue;
   const adj=[[x+1,y],[x-1,y],[x,y+1],[x,y-1]].some(([ax,ay])=>ax>=0&&ay>=0&&ax<MW&&ay<MH&&m[ay][ax]===0);
   if(!adj)continue;
-  const d=Math.hypot(x-67,y-66);
+  const d=Math.hypot(x-145,y-59);
   if(d<db){db=d;door={x,y};}
  }
  originalDoorCell=door||{x:67,y:66};
@@ -444,7 +447,8 @@ function setupOriginalMechanics(m){
  // The pitfall floor is represented as a third collision state: 2 = hole.
  // These are the checkerboard holes in the supplied Level 0 map.
  const pitCenters=[];
- for(let y of [58,65,72,79,86])for(let x of [61,70,79,88,97,106,115,124,133,142]){
+ // 8 columns x 5 rows: the checkerboard footprint visible on the supplied map.
+ for(let y of [52,64,76,88,100])for(let x of [64,76,88,100,112,124,136,148]){
   if(m[y]?.[x]===1)pitCenters.push({x,y});
  }
  for(const p of pitCenters){
@@ -471,7 +475,10 @@ function originalDoorLockedAt(x,y){
  return originalMode&&!originalDoorOpen&&originalDoorCell&&x===originalDoorCell.x&&y===originalDoorCell.y;
 }
 function originalPitActive(){
- return originalMode&&originalDoorOpen&&!originalLowerRoute&&!originalPitCrossed&&originalRoomAt(Math.floor(px),Math.floor(py))==='PITFALLS';
+ if(!originalMode||!originalDoorOpen||originalLowerRoute||originalPitCrossed)return false;
+ const x=Math.floor(px),y=Math.floor(py);
+ // Balance only while standing on the Pitfalls' safe walkways, never in a hole.
+ return originalRoomAt(x,y)==='PITFALLS'&&!originalPitAt(x,y);
 }
 function originalPitAt(x,y){
  return originalMode&&originalPitCells.has(x+','+y);
@@ -561,7 +568,8 @@ function updateOriginalPitBalance(now,dt){
  if(keys.w||keys.s||keys.a||keys.d)originalBalance += Math.sin(now*.0081)*.035*dt;
  originalBalance=Math.max(-1.05,Math.min(1.05,originalBalance));
  updateBalanceUI();
- const progress=Math.max(0,Math.min(1,(py-62)/(94-62)));
+ // The fixed spawn approaches the Pitfalls from the right, so crossing progress is horizontal.
+ const progress=Math.max(0,Math.min(1,(151-px)/(151-58)));
  if(progress>=.90){
   originalPitCrossed=true;
   originalBalance=0;
@@ -801,7 +809,7 @@ function reset(){
  updateHealthUI();
  document.getElementById('panel').style.display='none';clearKeys();
 }
-function clearKeys(){for(const k in keys)keys[k]=false;originalLeanInput=0;originalInteractQueued=false;crouching=false}
+function clearKeys(){for(const k in keys)keys[k]=false;originalLeanInput=0;originalInteractQueued=false;crouching=false;updateCrouchButton()}
 function drawDevMap(){
  const mc=document.getElementById('mapCanvas'),mctx=mc.getContext('2d');
  const cs=mc.width/MW;
@@ -844,7 +852,7 @@ function entityCountForSize(size){
 function spawnEntities(){
  entities=[];
  if(playMode==="peaceful")return;
- const count=entityCountForSize(MW);
+ const count=originalMode?1:entityCountForSize(MW);
  // Build a pool of valid corridor cells away from the player's start.
  const candidates=[];
  for(let y=1;y<MH-1;y++)for(let x=1;x<MW-1;x++){
@@ -1025,6 +1033,8 @@ function atExit(x,y){
  return false;
 }
 function move(dt){
+ // Resolve crouch state before movement/camera calculations so it applies immediately.
+ crouching=!!keys.control;
  // Physical gamepad sticks mirror the two mobile joysticks.
  const gx=gamepadMoveX, gy=gamepadMoveY;
  if(Math.abs(gx)>.01||Math.abs(gy)>.01){
@@ -1036,8 +1046,10 @@ function move(dt){
  if(paused||finished)return;
  let f=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0);
  let s=(keys.d?1:0)-(keys.a?1:0);
- if(keys.q||keys.arrowleft)pa-=dt*1.8;
- if(keys.e||keys.arrowright)pa+=dt*1.8;
+ if(!originalPitActive()){
+  if(keys.q||keys.arrowleft)pa-=dt*1.8;
+  if(keys.e||keys.arrowright)pa+=dt*1.8;
+ }
  const fMoving=Math.abs(f)>0||Math.abs(s)>0;
  const sprinting=keys.shift&&fMoving&&playerStamina>0.001;
  const exhaustedBase=playerStamina<=LOW_STAMINA_THRESHOLD;
@@ -1047,7 +1059,8 @@ function move(dt){
  if(!wall(Math.floor(px+dx+r*Math.sign(dx)),Math.floor(py)))px+=dx;
  if(!wall(Math.floor(px),Math.floor(py+dy+r*Math.sign(dy))))py+=dy;
  if(gameMode==="pool"){const targetFloor=poolFloorAt(px,py);pz=0}
- crouching=!!keys.control;
+ // Entering an actual pit cell causes the intended fall to the lower layer.
+ if(originalMode&&originalPitAt(Math.floor(px),Math.floor(py))){triggerOriginalDrop();return;}
  if(originalMode&&crouching){
   for(let i=0;i<exitEntryCells.length;i++){
    const e=exitEntryCells[i],name=exitCells[i]?.name||'';
@@ -1616,7 +1629,7 @@ function render(){
    const floorCos=Math.cos(floorRayAngle),floorSin=Math.sin(floorRayAngle);
    for(let y=Math.floor(hz)+1;y<H;y++){
     const focal=H*.92;
-    const cameraHeight=.46;
+    const cameraHeight=crouching?.26:.46;
     const vertical=(y-hz)/focal;
     const floorDepth=cameraHeight/Math.max(.012,vertical);
     if(floorDepth>RENDER_DISTANCE)continue;
@@ -1753,13 +1766,13 @@ function render(){
 addEventListener('keydown',e=>{
  const k=e.key.toLowerCase();
  if(k==='f'&&originalMode){queueOriginalInteract();e.preventDefault();return}
- if(k==='control'){keys.control=true;e.preventDefault();return}
+ if(k==='control'||k==='c'){keys.control=true;e.preventDefault();return}
  if(k==='escape'||k==='p'){togglePause();return}
  if(k==='m'){const panel=document.getElementById('mapPanel');if(panel.style.display==='flex')closeMap();else openMap();return}
  keys[k]=true;
  if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();
 });
-addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;if(e.key.toLowerCase()==='control')crouching=false});
+addEventListener('keyup',e=>{const k=e.key.toLowerCase();keys[k]=false;if(k==='control'||k==='c')crouching=false;updateCrouchButton()});
 
 let drag=false,lastX=0;
 canvas.onpointerdown=e=>{if(paused||finished)return;drag=true;lastX=e.clientX;canvas.setPointerCapture(e.pointerId)};
@@ -1785,8 +1798,19 @@ run.onpointerdown=e=>{e.preventDefault();keys.shift=true};run.onpointerup=run.on
 const interactBtn=document.getElementById('interactBtn');
 interactBtn.onpointerdown=e=>{e.preventDefault();queueOriginalInteract()};
 const crouchBtn=document.getElementById('crouchBtn');
-crouchBtn.onpointerdown=e=>{e.preventDefault();keys.control=true;crouching=true};
-crouchBtn.onpointerup=crouchBtn.onpointercancel=()=>{keys.control=false;crouching=false};
+function updateCrouchButton(){
+ if(!crouchBtn)return;
+ crouchBtn.textContent='CROUCH: '+(crouching?'ON':'OFF');
+ crouchBtn.setAttribute('aria-pressed',String(crouching));
+}
+crouchBtn.onclick=e=>{
+ e.preventDefault();
+ if(paused||finished)return;
+ // Touch crouch is a toggle so it cannot immediately release on a touchscreen pointer-up.
+ crouching=!crouching;
+ keys.control=crouching;
+ updateCrouchButton();
+};
 
 function updateClueToggle(){
  const b=document.getElementById('clueToggle');
@@ -1864,6 +1888,7 @@ document.getElementById('retry').onclick=()=>{
  document.getElementById('interactBtn').style.display='none';
  document.getElementById('crouchBtn').style.display='none';
  document.getElementById('balanceUI').style.display='none';
+ crouching=false;updateCrouchButton();
 };
 updateClueToggle();
 document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
