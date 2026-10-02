@@ -1357,7 +1357,7 @@ function rebuildLevel0CeilingLights(){
  }
 }
 function reset(){
- map=gameMode==="pool"?makePoolMap():(originalMode?makeOriginalMap():makeMap());findExit();
+ map=poolOriginalMode?makeOriginalPoolMap():(gameMode==="pool"?makePoolMap():(originalMode?makeOriginalMap():makeMap()));findExit();
  if(poolOriginalMode)updatePoolOriginalObjective();
  if(originalMode)updateOriginalObjective();
  rebuildLevel0CeilingLights();
