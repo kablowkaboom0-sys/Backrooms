@@ -23,7 +23,13 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #staminaText{font-size:10px;margin-top:3px;opacity:.75}#balanceUI{position:absolute;top:174px;left:12px;width:150px;opacity:.9;letter-spacing:1px;display:none}.balanceLabel{font-size:10px;margin-bottom:3px}.balanceBar{height:10px;border:1px solid rgba(255,255,255,.45);background:#120e0a}.balanceBar #balanceFill{height:100%;width:50%;background:#d5d0b5;transition:width .08s}#balanceText{font-size:10px;margin-top:3px;opacity:.75}
 #pauseBtn{position:absolute;top:34px;right:12px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#ddd;border:1px solid #777;font:12px monospace}
 #devBtn{position:absolute;top:34px;right:142px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#fff;border:1px solid #777;font:12px monospace}
-#mapBtn{position:absolute;top:34px;right:78px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#fff;border:1px solid #777;font:12px monospace}\n#devPanel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(360px,calc(100vw - 28px));display:none;background:rgba(7,5,2,.97);color:#eee;border:1px solid #888;padding:18px;box-sizing:border-box;z-index:12;pointer-events:auto;text-align:center;max-height:calc(100vh - 28px);overflow-y:auto}\n#devPanel h2{font-size:18px;letter-spacing:3px;margin:0 0 14px}\n#devPanel .devSection{margin:12px 0;padding:10px;border:1px solid #514a38;background:#14100b}\n#devPanel button{display:block;width:100%;margin:7px 0;padding:9px;background:#18130c;color:#eee;border:1px solid #777;font:12px monospace}\n#devPanel button:hover{background:#272016;border-color:#aaa}\n#devClose{margin-top:14px!important}
+#mapBtn{position:absolute;top:34px;right:78px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#fff;border:1px solid #777;font:12px monospace}
+#devPanel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(360px,calc(100vw - 28px));display:none;background:rgba(7,5,2,.97);color:#eee;border:1px solid #888;padding:18px;box-sizing:border-box;z-index:12;pointer-events:auto;text-align:center;max-height:calc(100vh - 28px);overflow-y:auto}
+#devPanel h2{font-size:18px;letter-spacing:3px;margin:0 0 14px}
+#devPanel .devSection{margin:12px 0;padding:10px;border:1px solid #514a38;background:#14100b}
+#devPanel button{display:block;width:100%;margin:7px 0;padding:9px;background:#18130c;color:#eee;border:1px solid #777;font:12px monospace}
+#devPanel button:hover{background:#272016;border-color:#aaa}
+#devClose{margin-top:14px!important}
 #objectiveBtn{position:absolute;top:34px;right:210px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#fff;border:1px solid #777;font:12px monospace;display:none}
 #objectivePanel{position:fixed;left:50%;top:82px;transform:translateX(-50%);width:min(360px,calc(100vw - 28px));display:none;background:rgba(7,5,2,.96);color:#eee;border:1px solid #777;padding:16px;box-sizing:border-box;z-index:7;pointer-events:auto;text-align:left}
 #objectivePanel h2{font-size:16px;letter-spacing:3px;margin:0 0 10px;text-align:center}
@@ -127,7 +133,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <button id="resume">RESUME</button>
 </div>
 <div id="objectivePanel"><h2>ORIGINAL MODE OBJECTIVE</h2><div id="objectiveCurrent">Find the broken ladder and collect all 4 pieces.</div><ol id="objectiveSteps"><li>Find the broken ladder room.</li><li>Collect all 4 ladder pieces with F / INTERACT.</li><li>Repair the ladder, climb it, and take the key.</li><li>Find the wooden door and unlock it with the key.</li><li>Cross the Pitfalls by balancing with Q/E.</li><li>Reach the vent on the far side to escape.</li><li>If you fall, follow the wall arrows to the alternate vent.</li></ol><button id="objectiveClose" type="button">CLOSE</button></div>
-<div id="devPanel"><h2>DEV SETTINGS</h2><div class="devSection"><div>TELEPORT TO EXIT</div><button id="devExit1">EXIT 1</button><button id="devExit2">EXIT 2</button></div><div class="devSection"><button id="devLadder">OBTAIN ALL LADDER PIECES</button><button id="devLadderFront">TELEPORT IN FRONT OF LADDER</button><button id="devKey">GET KEY</button></div><button id="devClose">CLOSE</button></div>\n<div id="mapPanel">
+<div id="devPanel"><h2>DEV SETTINGS</h2><div class="devSection"><div>TELEPORT TO EXIT</div><button id="devExit1">EXIT 1</button><button id="devExit2">EXIT 2</button></div><div class="devSection"><button id="devLadder">OBTAIN ALL LADDER PIECES</button><button id="devLadderFront">TELEPORT IN FRONT OF LADDER</button><button id="devKey">GET KEY</button></div><button id="devClose">CLOSE</button></div>
+<div id="mapPanel">
 <h1>DEV MAP</h1>
 <canvas id="mapCanvas" width="410" height="343"></canvas>
 <div>WHITE = EXIT &nbsp; • &nbsp; RED = YOU &nbsp; • &nbsp; BLACK = ENTITIES &nbsp; • &nbsp; YELLOW = PATH</div>
