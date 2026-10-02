@@ -47,6 +47,12 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #horrorChoices,#difficultyChoices{display:none}
 .mode{width:250px;margin:8px;padding:14px;background:#17120c;color:#ddd;border:1px solid #777;font:16px monospace;letter-spacing:2px}
 .mode:hover{background:#272016;border-color:#aaa}
+.mode:focus,.diff:focus,#backModes:focus,#backLevelsFromModes:focus{
+ outline:3px solid #fff;
+ outline-offset:3px;
+ background:#34291a;
+ border-color:#fff;
+}
 #backModes,#backLevelsFromModes{margin-top:14px;padding:8px 18px;background:#111;color:#bbb;border:1px solid #666;font:12px monospace}
 .diff{width:220px;margin:7px;padding:12px;background:#17120c;color:#ddd;border:1px solid #666;font:15px monospace;letter-spacing:2px}
 .diff:hover{background:#272016;border-color:#aaa}
@@ -2995,21 +3001,35 @@ function render(){
 // Enter or Space. Keep this separate from gameplay controls.
 let tvMenuItems=[];
 let tvMenuIndex=0;
+let tvMenuSignature='';
+
+function getTVMenuSignature(items){
+ return items.map(el=>el.id||el.dataset.mode||el.dataset.playmode||el.dataset.size||el.textContent.trim()).join('|');
+}
 function refreshTVMenuFocus(){
  const items=visibleMenuItems();
  if(!items.length)return;
- tvMenuItems=items;
+ const sig=getTVMenuSignature(items);
+ if(sig!==tvMenuSignature){
+  tvMenuItems=items;
+  tvMenuSignature=sig;
+  if(tvMenuIndex>=items.length)tvMenuIndex=0;
+ }
+ if(tvMenuIndex<0)tvMenuIndex=items.length-1;
  if(tvMenuIndex>=items.length)tvMenuIndex=0;
- items[tvMenuIndex].focus();
- items[tvMenuIndex].scrollIntoView({block:'nearest'});
+ const item=items[tvMenuIndex];
+ item.focus({preventScroll:true});
+ item.scrollIntoView({block:'nearest'});
 }
 function handleTVMenuKey(e){
  const start=document.getElementById('startScreen');
  if(start.style.display==='none')return false;
  const items=visibleMenuItems();
  if(!items.length)return false;
- if(items!==tvMenuItems){
+ const sig=getTVMenuSignature(items);
+ if(sig!==tvMenuSignature){
   tvMenuItems=items;
+  tvMenuSignature=sig;
   tvMenuIndex=0;
  }
  const k=e.key;
@@ -3027,9 +3047,10 @@ function handleTVMenuKey(e){
   e.stopPropagation();
   return true;
  }
- if(k==='Enter'||k===' '||k==='NumpadEnter'){
-  items[tvMenuIndex].click();
-  setTimeout(refreshTVMenuFocus,30);
+ if(k==='Enter'||k===' '||k==='NumpadEnter'||k==='Select'){
+  const selected=items[tvMenuIndex];
+  if(selected)selected.click();
+  setTimeout(refreshTVMenuFocus,50);
   e.preventDefault();
   e.stopPropagation();
   return true;
@@ -3037,18 +3058,49 @@ function handleTVMenuKey(e){
  return false;
 }
 document.addEventListener('keydown',handleTVMenuKey,true);
+
+// TV browsers that emulate the remote as a mouse/pointer should work too.
+// Moving the pointer over a menu item makes it the selected item; the normal
+// button click then starts that selection.
+const tvStartScreen=document.getElementById('startScreen');
+tvStartScreen.addEventListener('pointermove',e=>{
+ const target=e.target.closest('.mode,.diff,#backModes,#backLevelsFromModes');
+ if(!target)return;
+ const items=visibleMenuItems();
+ const i=items.indexOf(target);
+ if(i>=0){
+  tvMenuItems=items;
+  tvMenuSignature=getTVMenuSignature(items);
+  tvMenuIndex=i;
+  target.focus({preventScroll:true});
+ }
+});
+tvStartScreen.addEventListener('pointerdown',e=>{
+ const target=e.target.closest('.mode,.diff,#backModes,#backLevelsFromModes');
+ if(target){
+  const items=visibleMenuItems();
+  const i=items.indexOf(target);
+  if(i>=0){
+   tvMenuItems=items;
+   tvMenuSignature=getTVMenuSignature(items);
+   tvMenuIndex=i;
+   target.focus({preventScroll:true});
+  }
+ }
+});
 document.addEventListener('focusin',e=>{
  if(document.getElementById('startScreen').style.display!=='none' &&
     e.target.matches('.mode,.diff,#backModes,#backLevelsFromModes')){
   const items=visibleMenuItems();
   const i=items.indexOf(e.target);
-  if(i>=0){tvMenuItems=items;tvMenuIndex=i;}
+  if(i>=0){
+   tvMenuItems=items;
+   tvMenuSignature=getTVMenuSignature(items);
+   tvMenuIndex=i;
+  }
  }
 });
-setTimeout(()=>{
- const first=visibleMenuItems()[0];
- if(first)first.focus();
-},0);
+setTimeout(refreshTVMenuFocus,100);
 
 addEventListener('keydown',e=>{
  const k=e.key.toLowerCase();
