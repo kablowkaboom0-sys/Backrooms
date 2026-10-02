@@ -1398,10 +1398,13 @@ function atExit(x,y){
  if(!originalMode)return exitCells.some(e=>x===e.x&&y===e.y);
  for(let i=0;i<exitEntryCells.length;i++){
   const e=exitEntryCells[i];
-  if(x!==e[0]||y!==e[1])continue;
+  const near=Math.abs(x-e[0])<=1&&Math.abs(y-e[1])<=1;
+  if(!near)continue;
   const name=exitCells[i]?.name||'';
-  if(name==='NORMAL EXIT')return originalLadderClimbed&&originalHasKey&&originalDoorOpen&&originalPitCrossed&&!originalLowerRoute&&keys.control;
-  if(name==='ALTERNATE EXIT')return originalLowerRoute&&keys.control;
+  // Exits activate by simply reaching their entrance. No Control/crouch
+  // requirement, so the marked exits are actually usable in normal play.
+  if(name==='NORMAL EXIT')return originalLadderClimbed&&originalHasKey&&originalDoorOpen&&originalPitCrossed&&!originalLowerRoute;
+  if(name==='ALTERNATE EXIT')return originalLowerRoute;
  }
  return false;
 }
@@ -1436,18 +1439,7 @@ function move(dt){
  if(originalMode)updateOriginalObjective();
  // Entering the void beside a ledge causes the intended fall to the lower layer.
  if(originalMode&&originalPitAt(Math.floor(px),Math.floor(py))){triggerOriginalDrop();return;}
- if(originalMode&&crouching){
-  for(let i=0;i<exitEntryCells.length;i++){
-   const e=exitEntryCells[i],wallExit=exitCells[i],name=wallExit?.name||'';
-   const nearEntry=Math.hypot(px-(e[0]+.5),py-(e[1]+.5))<1.8;
-   const nearWall=Math.hypot(px-(wallExit.x+.5),py-(wallExit.y+.5))<1.8;
-   if(!nearEntry&&!nearWall)continue;
-   const ready=name==='NORMAL EXIT'
-    ?(originalLadderClimbed&&originalHasKey&&originalDoorOpen&&originalPitCrossed&&!originalLowerRoute)
-    :(name==='ALTERNATE EXIT'&&originalLowerRoute);
-   if(ready){finish();break;}
-  }
- }else if(atExit(Math.floor(px),Math.floor(py)))finish();
+ if(atExit(Math.floor(px),Math.floor(py)))finish();
 }
 function finish(){
  finished=true;
