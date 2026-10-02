@@ -1439,6 +1439,18 @@ function move(dt){
  if(!wall(Math.floor(px+dx+r*Math.sign(dx)),Math.floor(py)))px+=dx;
  if(!wall(Math.floor(px),Math.floor(py+dy+r*Math.sign(dy))))py+=dy;
  if(gameMode==="pool"){const targetFloor=poolFloorAt(px,py);pz=0}
+ // Ladder pieces are picked up by walking into them. F/INTERACT still works,
+ // but contact pickup means the player does not need to stop on an exact pixel.
+ if(originalMode&&originalLadderPieces.length){
+  for(let i=originalLadderPieces.length-1;i>=0;i--){
+   const p=originalLadderPieces[i];
+   if(Math.hypot(px-(p.x+.5),py-(p.y+.5))<.72){
+    originalLadderPieces.splice(i,1);
+    originalLadderCollected++;
+    updateOriginalObjective();
+   }
+  }
+ }
  // Keep the Original Mode room label synced to the player's current room.
  if(originalMode)updateOriginalObjective();
  // Entering the void beside a ledge causes the intended fall to the lower layer.
