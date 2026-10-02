@@ -230,8 +230,21 @@ const ENTITY_DAMAGE=20;
 const ENTITY_DAMAGE_COOLDOWN=1000;
 const ENTITY_ATTACK_RANGE=.58;
 let lastEntityThink=0;
-const RENDER_DISTANCE=16.0;
-const FOG_START=6.0;
+// Extended view distance. Far surfaces still darken normally, while the last
+// part of the range fades into atmospheric fog instead of hard-clipping.
+const RENDER_DISTANCE=28.0;
+const FOG_START=18.0;
+const OBJECT_DARK_START=9.0;
+function objectDistanceStyle(dist){
+ const darkT=Math.max(0,Math.min(1,(dist-OBJECT_DARK_START)/(RENDER_DISTANCE-OBJECT_DARK_START)));
+ const darkness=1-darkT*.58;
+ const fogT=Math.max(0,Math.min(1,(dist-FOG_START)/(RENDER_DISTANCE-FOG_START)));
+ return {
+  darkness,
+  alpha:1-fogT*.72,
+  brightness:darkness
+ };
+}
 const keys={};
 const depthBuffer=new Float32Array(W);
 let gamepadIndex=null;
@@ -1171,14 +1184,18 @@ function drawRobloxObjects(){
   const center=W/2+(Math.tan(da)/Math.tan(currentFOV/2))*(W/2);
   const sx=Math.max(0,Math.min(W-1,Math.floor(center)));
   if(dist>=depthBuffer[sx])return null;
-  return {center,dist};
+  return {center,dist,...objectDistanceStyle(dist)};
  };
  for(const a of robloxArrowCells){
   const p=project(a); if(!p)continue;
   const h=Math.max(4,Math.min(15,H/p.dist*.18));
   const w=Math.max(4,h*.9);
   const y=H/2+h*.42;
-  g.save();g.translate(p.center,y);g.rotate(a.a-pa);
+  const style=objectDistanceStyle(p.dist);
+  g.save();
+  g.globalAlpha=style.alpha;
+  g.filter='brightness('+style.brightness.toFixed(3)+')';
+  g.translate(p.center,y);g.rotate(a.a-pa);
   g.fillStyle='rgba(92,58,24,.96)';
   g.beginPath();
   g.moveTo(-w*.48,-h*.12);g.lineTo(w*.18,-h*.12);
@@ -1190,7 +1207,10 @@ function drawRobloxObjects(){
  if(ex){
   const h=Math.max(10,Math.min(48,H/ex.dist*1.15)),w=Math.max(10,h*.7);
   const top=H/2-h*.55,bottom=top+h;
+  const style=objectDistanceStyle(ex.dist);
   g.save();
+  g.globalAlpha=style.alpha;
+  g.filter='brightness('+style.brightness.toFixed(3)+')';
   g.fillStyle='rgba(25,75,30,.95)';g.fillRect(ex.center-w/2,top,w,h*.16);
   g.fillStyle='rgba(205,235,190,.98)';g.font=Math.max(5,Math.min(11,h*.2))+'px monospace';
   g.textAlign='center';g.fillText('EXIT',ex.center,top+h*.13);
@@ -2298,13 +2318,15 @@ level0EntitySource.onload=()=>{
 };
 level0EntitySource.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIQAAAEECAYAAADpg5zLAAACg0lEQVR42u3dQY6DMAxA0fGI+1/ZXXVZBZGmduC97SwGoS9XpCSNzPyDt3+3AEEgCASBIJh1dL2wiCh9/MnMMCHwkeEWIAgEgSAQBILgu4/7q77trF5H6K7rOocJgSAQBIJAEAgCQbDQ4RbUGK3TVK1TmBAIAkEgCASBIBAEgkAQCAJBIAgEgSAQBIJAEAgCQSAIEASCQBCctmxfxmhfgfMjTAgEgSAQBIJAEAiCxyk7H8I6hQmBIBAEgkAQCAJB8DjOqSzi9zLwkYEgEASCQBAIgge6/Lud3lfo7eo6hwmBIBAEgkAQCAJBsFDZ+RCzrIOYEAgCQSAIBIEgEATb2XZfRvfzJXZdhzEhEASCQBAIAkEgCBa67fkQs+sAo+f8ruc7mBAIAkEgCASBIBAEgkAQCAJBIAgEgSAQBAgCQSAIBIEgEASCQBAIAkEgCASBIBAEgkAQCAJBIAgEAYJAEAgCQSAIBIEgEASCQBAIAkEgCASBIBAEgkAQCAJBgCAQBIJAEAgCQSAIBMFPHbteeETkzv8/M8OEwEcGgkAQCAJBIAgepu06xO7P+aPrH/296vpNCASBIBAEgkAQCIKFtn0fouv7BGevr/p9DhMCQSAIBIEgEASCQBAIAkEgCASBIBAEguDGPr4PMft9fdd9B7uouv8mBIJAEAgCQSAIBMFCl/dl7Lrv4C5W3X8TAkEgCASBIBAEgkAQCAJBIAgEgSAQBIJAEAgCQSAIBAGCQBAIgtM+7suYPb/B+Q9zqu6/CYEgEASCQBAIAkEgCASBIBAEgkAQCAJBIAgEgSAQBIIAQSAIBIEgEASCQBAIAkEgCARBO5Hp5zUxIRAEgkAQCIIvegHx828PMQaUfgAAAABJRU5ErkJggg==';
 
-function drawLevel0Entity(center,top,h,unit,phase){
+function drawLevel0Entity(center,top,h,unit,phase,dist){
  if(!level0EntityReady)return 0;
  const drawH=Math.max(4,Math.min(H*.92,h));
  const drawW=drawH*(level0EntityCanvas.width/Math.max(1,level0EntityCanvas.height));
  g.save();
- g.globalAlpha=1;
+ const style=objectDistanceStyle(dist);
+ g.globalAlpha=style.alpha;
  g.globalCompositeOperation='source-over';
+ g.filter='brightness('+style.brightness.toFixed(3)+')';
  g.imageSmoothingEnabled=false;
  g.drawImage(level0EntityCanvas,center-drawW/2,top,drawW,drawH);
  g.restore();
@@ -2372,7 +2394,7 @@ function drawEntities(){
   if(gameMode==="pool"){
    drawSmiler(center,top,h,unit,dist);
   }else{
-   drawLevel0Entity(center,top,h,unit,e.walkPhase||e.phase||0);
+   drawLevel0Entity(center,top,h,unit,e.walkPhase||e.phase||0,dist);
   }
  }
 }
@@ -2543,7 +2565,7 @@ function render(){
       }
      }
     }
-    const depthFade=Math.max(.36,1-Math.max(0,floorDepth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.60);
+    const depthFade=Math.max(.30,1-Math.max(0,floorDepth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.68);
     const light=Math.max(.55,1-floorDepth*.018)*depthFade;
     setPix((y*W+x)*4,ct[0]*light,ct[1]*light,ct[2]*light);
    }
