@@ -98,7 +98,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v30</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v31</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div><div id="balanceUI"><div class="balanceLabel">BALANCE</div><div class="balanceBar"><div id="balanceFill"></div></div><div id="balanceText">CENTER</div></div><div id="originalObjective"></div>
 <button id="objectiveBtn">OBJECTIVE</button><button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -795,10 +795,8 @@ function rebuildLevel0CeilingLights(){
  ceilingLights=[];
  if(gameMode!=="level0"||!map)return;
 
- // Level 0 ceiling: use a regular ceiling grid rather than scattered fixtures.
- // Every open area is sampled on a 2x2 world-unit grid, then the fixture is
- // kept only when the surrounding 2x2 panel is mostly open. This keeps the
- // fluorescent lights aligned with the ceiling tile grid.
+ // Level 0 ceiling uses a regular 3x3 panel grid. Each fluorescent
+ // fixture sits exactly at the CENTER of its 3x3 ceiling panel.
  const occupied=new Set();
  const key=(x,y)=>x+','+y;
  const add=(x,y)=>{
@@ -809,31 +807,32 @@ function rebuildLevel0CeilingLights(){
   ceilingLights.push({x:x+.5,y:y+.5});
  };
 
- // First pass: a dense, regular 2x2 grid across all open ceiling space.
- // The parity is fixed in world coordinates so the grid does not shift
- // when the player moves.
- for(let y=2;y<MH-2;y+=2){
-  for(let x=2;x<MW-2;x+=2){
+ // World-space 3x3 grid. The same grid remains fixed while the player
+ // moves, so the light always stays centered in its ceiling panel.
+ for(let y=2;y<MH-2;y+=3){
+  for(let x=2;x<MW-2;x+=3){
    let open=0;
-   for(let oy=0;oy<2;oy++)for(let ox=0;ox<2;ox++){
+   for(let oy=0;oy<3;oy++)for(let ox=0;ox<3;ox++){
     if(map[y+oy]?.[x+ox]===0)open++;
    }
-   if(open>=3)add(x,y);
+   // Require the panel center to be open and most of the panel to be
+   // usable ceiling space, preventing lights from being clipped by walls.
+   if(map[y+1]?.[x+1]===0 && open>=6)add(x+1,y+1);
   }
  }
 
- // Fill the few gaps caused by walls/corners with the nearest aligned cell,
- // but keep the same 2-cell rhythm instead of introducing random positions.
- for(let y=2;y<MH-2;y+=2){
-  for(let x=2;x<MW-2;x+=2){
-   if(map[y]?.[x]!==0)continue;
-   const k=key(x,y);
-   if(occupied.has(k))continue;
+ // Fill only aligned 3x3 panel centers where a wall interrupted the first
+ // pass. This preserves the centered 3x3 rhythm instead of scattering lights.
+ for(let y=2;y<MH-2;y+=3){
+  for(let x=2;x<MW-2;x+=3){
+   const cx=x+1,cy=y+1;
+   if(map[cy]?.[cx]!==0)continue;
+   if(occupied.has(key(cx,cy)))continue;
    const around=[
-    map[y]?.[x+1]===0,map[y+1]?.[x]===0,
-    map[y]?.[x-1]===0,map[y-1]?.[x]===0
+    map[cy]?.[cx+1]===0,map[cy+1]?.[cx]===0,
+    map[cy]?.[cx-1]===0,map[cy-1]?.[cx]===0
    ].filter(Boolean).length;
-   if(around>=2&&((x+y)/2)%2===0)add(x,y);
+   if(around>=3)add(cx,cy);
   }
  }
 }
