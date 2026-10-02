@@ -530,6 +530,10 @@ function setupOriginalMechanics(m){
   if(best){chosen.push(best);candidates.splice(candidates.indexOf(best),1);}
  }
  originalLadderPieces=chosen;
+ // Keep immutable dev-test coordinates separate from the live piece array.
+ // Collecting a piece removes it from originalLadderPieces, but must never
+ // erase the location used by the DEV teleport buttons.
+ originalLadderPieceSpawns=chosen.map(p=>({x:p.x,y:p.y}));
 
  function nearestWalkable(cx,cy,rad=12){
   let best=null,bd=Infinity;
@@ -2222,17 +2226,26 @@ function devTeleportToLadderPiece(index){
  if(!originalMode)return;
  const piece=originalLadderPieceSpawns[index];
  if(!piece)return;
+
  const lx=piece.x,ly=piece.y;
- const spots=[[lx,ly+1],[lx,ly-1],[lx+1,ly],[lx-1,ly]];
- const spot=spots.find(([x,y])=>x>=0&&y>=0&&x<MW&&y<MH&&map[y]?.[x]===0);
+ // Prefer an adjacent walkable tile, then search outward if the piece is
+ // surrounded by walls. This makes every DEV teleport reliable.
+ let spot=null;
+ for(let radius=1;radius<=8&&!spot;radius++){
+  const spots=[];
+  for(let y=ly-radius;y<=ly+radius;y++){
+   for(let x=lx-radius;x<=lx+radius;x++){
+    if(Math.max(Math.abs(x-lx),Math.abs(y-ly))!==radius)continue;
+    if(x>=0&&y>=0&&x<MW&&y<MH&&map[y]?.[x]===0)spots.push([x,y]);
+   }
+  }
+  spot=spots.find(([x,y])=>Math.hypot(x-lx,y-ly)<=radius+0.01);
+ }
  if(spot){
   px=spot[0]+.5;
   py=spot[1]+.5;
   pa=Math.atan2(ly+.5-py,lx+.5-px);
- }else{
-  px=lx+.5;
-  py=ly+1.5;
-  pa=Math.PI/2;
+  updateOriginalObjective();
  }
  // Teleporting only changes the player's position. It does NOT remove the
  // ladder piece or increment the collected-piece counter.
