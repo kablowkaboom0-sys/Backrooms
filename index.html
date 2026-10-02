@@ -91,7 +91,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v13</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v14</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div>
 <button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -1472,6 +1472,9 @@ document.getElementById('backLevelsFromModes').onclick=()=>{
 };
 document.querySelectorAll('#modeChoices .mode').forEach(btn=>btn.onclick=()=>{
  gameMode=btn.dataset.mode;
+ originalMode=false;
+ const originalBtn=document.getElementById('originalModeBtn');
+ if(originalBtn)originalBtn.style.display=gameMode==="level0"?'block':'none';
  document.getElementById('modeChoices').style.display='none';
  document.getElementById('horrorChoices').style.display='flex';
  document.getElementById('startSub').textContent=gameMode==="pool"?'POOL ROOMS // CHOOSE MODE':'LEVEL 0 // CHOOSE MODE';
