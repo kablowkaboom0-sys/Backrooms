@@ -627,6 +627,76 @@ function makeOriginalMap(){
   }
  }
 
+ // Reference-inspired architectural density pass.
+ // The source map has many short wall runs and isolated square pillars.
+ // Add them only inside already-open rooms, while preserving the important
+ // gameplay routes checked below.
+ const archZones=[
+  [8,40,52,74,.22],
+  [54,5,108,43,.20],
+  [50,43,126,84,.25],
+  [7,73,126,122,.18],
+  [109,39,126,76,.22]
+ ];
+ const archHash=(x,y)=>{
+  let n=(Math.imul(x+17,374761393)^Math.imul(y+31,668265263))>>>0;
+  n=Math.imul(n^(n>>>13),1274126177)>>>0;
+  return n;
+ };
+ const archNearProtected=(x,y,w,h)=>{
+  for(const [ax,ay] of protectedPoints){
+   if(ax>=x-2&&ax<=x+w+1&&ay>=y-2&&ay<=y+h+1)return true;
+  }
+  return false;
+ };
+ const archCanPlace=(x,y,w,h)=>{
+  if(x<2||y<2||x+w>=150||y+h>=125||archNearProtected(x,y,w,h))return false;
+  for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++){
+   if(m[yy]?.[xx]!==0)return false;
+  }
+  return true;
+ };
+ let archAttempts=0,archPlaced=0;
+ for(const [x1,y1,x2,y2,density] of archZones){
+  for(let y=y1;y<=y2&&archAttempts<650;y+=2){
+   for(let x=x1;x<=x2&&archAttempts<650;x+=2){
+    const h=archHash(x,y);
+    if((h%1000)/1000>density)continue;
+    archAttempts++;
+    let w=1,hh=1;
+    const shape=(h>>>10)%10;
+    if(shape<2){w=2;hh=2;}
+    else if(shape===2){w=1;hh=3;}
+    else if(shape===3){w=3;hh=1;}
+    if(!archCanPlace(x,y,w,hh))continue;
+    for(let yy=y;yy<y+hh;yy++)for(let xx=x;xx<x+w;xx++)m[yy][xx]=1;
+    if(!reachable(124,59,84,24)||!reachable(124,59,76,125)){
+     for(let yy=y;yy<y+hh;yy++)for(let xx=x;xx<x+w;xx++)m[yy][xx]=0;
+    }else{
+     archPlaced++;
+    }
+   }
+  }
+ }
+ // A handful of longer wall fragments break up the remaining overly-open
+ // rectangles, matching the offset borders visible in the reference.
+ const archWalls=[
+  [14,49,7,1],[29,45,1,7],[35,61,8,1],[46,67,1,8],
+  [59,14,9,1],[73,18,1,8],[91,14,8,1],[101,24,1,9],
+  [57,47,1,9],[69,54,9,1],[81,47,1,8],[96,55,8,1],
+  [107,45,1,9],[116,61,9,1],[18,82,10,1],[32,88,1,9],
+  [45,82,8,1],[57,96,1,9],[69,88,10,1],[83,99,1,9],
+  [96,88,9,1],[108,101,1,9],[117,92,8,1]
+ ];
+ for(const [x,y,w,h] of archWalls){
+  if(!archCanPlace(x,y,w,h))continue;
+  for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)m[yy][xx]=1;
+  if(!reachable(124,59,84,24)||!reachable(124,59,76,125)){
+   for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)m[yy][xx]=0;
+  }
+ }
+ void archPlaced;
+
  MW=152; MH=127;
  // Use the actual Original Mode spawn from the reference-map layout.
  startCell={x:124,y:59};
