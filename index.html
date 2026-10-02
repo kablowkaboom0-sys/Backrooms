@@ -90,7 +90,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v10</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v11</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div>
 <button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -1013,19 +1013,27 @@ level0EntitySource.onload=()=>{
  const cg=level0EntityCanvas.getContext('2d');
  cg.clearRect(0,0,level0EntityCanvas.width,level0EntityCanvas.height);
  cg.drawImage(level0EntitySource,0,0);
+ const img=cg.getImageData(0,0,level0EntityCanvas.width,level0EntityCanvas.height);
+ for(let i=0;i<img.data.length;i+=4){
+  const a=img.data[i+3];
+  img.data[i+3]=a>24?255:0;
+ }
+ cg.putImageData(img,0,0);
  level0EntityReady=true;
 };
 level0EntitySource.src='entity_repo.png?v=10';
 
 function drawLevel0Entity(center,top,h,unit,phase){
- if(!level0EntityReady)return;
- const drawH=Math.max(4,h);
+ if(!level0EntityReady)return 0;
+ const drawH=Math.min(H*.86,Math.max(4,h));
  const drawW=drawH*(level0EntityCanvas.width/level0EntityCanvas.height);
+ const drawTop=H/2-drawH*.48;
  g.save();
  g.globalAlpha=1;
- g.imageSmoothingEnabled=true;
- g.drawImage(level0EntityCanvas,center-drawW/2,top,drawW,drawH);
+ g.imageSmoothingEnabled=false;
+ g.drawImage(level0EntityCanvas,center-drawW/2,drawTop,drawW,drawH);
  g.restore();
+ return drawW;
 }
 function drawSmiler(center,top,h,unit,dist){
  // Pool Rooms entity: a floating Smiler face, with its body hidden in
@@ -1077,8 +1085,8 @@ function drawEntities(){
   // Perspective height shared by both entity styles.
   const h=Math.min(H*1.7,H/(Math.max(.35,dist))*.82);
   const unit=Math.max(.45,h/21);
-  const width=9*unit;
-  const left=Math.round(center-width/2),top=Math.round(H/2-h*.47);
+  const width=Math.min(H*.86,h)*(level0EntityCanvas.width/Math.max(1,level0EntityCanvas.height));
+  const left=Math.round(center-width/2),top=Math.round(H/2-Math.min(H*.86,h)*.48);
   // Simple column occlusion against the wall depth.
   let visible=false;
   for(let sx=Math.max(0,left);sx<Math.min(W,left+width);sx++){
