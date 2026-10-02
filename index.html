@@ -1085,7 +1085,14 @@ function poolOriginalDarkAt(x,y){
 }
 function updatePoolOriginalObjective(){
  const el=document.getElementById('originalObjective');if(!el||!poolOriginalMode)return;
- el.textContent='ORIGINAL POOL ROOMS • Follow the safe route to the red-lit hallway. Avoid dark-tiled infected rooms and boiling water. The large staircase leads to the Hub.';
+ el.textContent='ORIGINAL POOL ROOMS • Follow the safe route to the red-lit hallway. Avoid the 3 dark-tiled infected rooms and the boiling-water spiral. The large staircase leads to the Hub.';
+ const panel=document.getElementById('objectivePanel');
+ if(panel){
+  const h=panel.querySelector('h2');if(h)h.textContent='POOL ROOMS // ORIGINAL';
+  const cur=document.getElementById('objectiveCurrent');if(cur)cur.textContent='Navigate Level 37 to the red-lit hallway, or take the large staircase to The Hub.';
+  const steps=document.getElementById('objectiveSteps');
+  if(steps)steps.innerHTML='<li>Explore the square entrances and main Poolrooms.</li><li>Follow the safe route through the wavy rooms and sewer-dungeon.</li><li>Avoid the three dark-tiled rooms with infected water.</li><li>Do not enter the boiling-water spiral zone.</li><li>Enter the short red-lit hallway to reach Level !.</li><li>Alternatively, climb the large staircase to The Hub door.</li>';
+ }
 }
 function makePoolMap(){
  seed=193742;const m=Array.from({length:MH},()=>Array(MW).fill(1));
