@@ -2500,12 +2500,12 @@ function render(){
     const bb=35*fade*fog;
     for(let x=0;x<W;x++)setPix((y*W+x)*4,rr,gg,bb);
    }else{
-    // Level 0/Original must never expose the old red fallback through the
-    // distant floor. Use a dark, neutral carpet-colored horizon instead.
-    const rr=originalMode?78*fade*fog:108*fade*fog;
-    const gg=originalMode?70*fade*fog:21*fade*fog;
-    const bb=originalMode?52*fade*fog:20*fade*fog;
-    for(let x=0;x<W;x++)setPix((y*W+x)*4,rr,gg,bb);
+    // Level 0/Roblox/Original must never expose a red fallback through the
+    // distant floor. Roblox uses the same tan carpet family as its Lobby floor.
+    const rr=originalMode?78:robloxMode?142:108;
+    const gg=originalMode?70:robloxMode?124:21;
+    const bb=originalMode?52:robloxMode?88:20;
+    for(let x=0;x<W;x++)setPix((y*W+x)*4,rr*fade*fog,gg*fade*fog,bb*fade*fog);
    }
   }
  }
