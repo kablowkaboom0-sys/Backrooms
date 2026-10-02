@@ -665,6 +665,17 @@ function originalInteract(){
  originalInteractQueued=false;
  if(!use)return;
 
+ // The wooden door is a real interactable object. Require the key,
+ // then unlock it and remove the wall collision so the Pitfalls can be entered.
+ if(originalHasKey&&!originalDoorOpen&&originalDoorCell){
+  const d=Math.hypot(px-(originalDoorCell.x+.5),py-(originalDoorCell.y+.5));
+  if(d<1.8){
+   originalDoorOpen=true;
+   updateOriginalObjective();
+   return;
+  }
+ }
+
  // Pick up loose ladder pieces first.
  for(let i=originalLadderPieces.length-1;i>=0;i--){
   const p=originalLadderPieces[i];
@@ -722,6 +733,49 @@ function drawOriginalObjects(){
   if(dist>=depthBuffer[sx])return null;
   return {center,dist};
  };
+
+ // Locked wooden door leading into the Pitfalls.
+ // It is anchored to the actual collision cell, so it stays in place while
+ // the player approaches and disappears when unlocked.
+ if(originalDoorCell&&!originalDoorOpen){
+  const door=projectCell(originalDoorCell);
+  if(door){
+   const dh=Math.max(16,Math.min(58,H/door.dist*1.7));
+   const dw=Math.max(8,Math.min(30,dh*.48));
+   const cx=door.center;
+   const bottom=H/2+dh*.5;
+   const top=bottom-dh;
+   g.save();
+   g.fillStyle='rgba(70,39,20,.98)';
+   g.fillRect(cx-dw/2,top,dw,dh);
+   // Vertical wooden planks.
+   g.strokeStyle='rgba(34,20,11,.9)';
+   g.lineWidth=Math.max(1,dw*.06);
+   for(let i=1;i<4;i++){
+    const x=cx-dw/2+dw*i/4;
+    g.beginPath();g.moveTo(x,top);g.lineTo(x,bottom);g.stroke();
+   }
+   // Cross braces and frame.
+   g.strokeStyle='rgba(115,72,35,.95)';
+   g.lineWidth=Math.max(2,dw*.1);
+   g.beginPath();
+   g.moveTo(cx-dw*.4,top+dh*.22);g.lineTo(cx+dw*.4,top+dh*.78);
+   g.moveTo(cx+dw*.4,top+dh*.22);g.lineTo(cx-dw*.4,top+dh*.78);
+   g.stroke();
+   g.strokeStyle='rgba(25,16,10,.98)';
+   g.lineWidth=Math.max(2,dw*.12);
+   g.strokeRect(cx-dw/2,top,dw,dh);
+   // Handle / lock.
+   g.fillStyle='rgba(220,190,95,.98)';
+   g.beginPath();g.arc(cx+dw*.25,top+dh*.52,Math.max(2,dw*.07),0,Math.PI*2);g.fill();
+   if(door.dist<8){
+    g.font='6px monospace';g.textAlign='center';
+    g.fillStyle='rgba(255,235,150,.95)';
+    g.fillText(originalHasKey?'PRESS F TO UNLOCK':'LOCKED DOOR',cx,Math.max(7,top-5));
+   }
+   g.restore();
+  }
+ }
 
  // Broken ladder: fixed to the floor and leaning toward a nearby wall.
  // It no longer behaves like a floating screen-space marker.
