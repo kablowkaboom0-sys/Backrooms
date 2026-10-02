@@ -442,8 +442,8 @@ function updateOriginalObjective(){
  if(!el)return;
  if(!originalMode){el.style.display='none';return;}
  el.style.display='block';
- let text='';
- if(originalLadderCollected<4)text='LADDER PIECES: '+originalLadderCollected+'/4';
+ let text='ROOM: '+(originalRoomAt(Math.floor(px),Math.floor(py))||'LOBBY')+' • ';
+ if(originalLadderCollected<4)text+='LADDER PIECES: '+originalLadderCollected+'/4';
  else if(!originalHasKey)text='LADDER REPAIRED • FIND THE KEY';
  else if(!originalDoorOpen)text='KEY FOUND • UNLOCK THE DOOR';
  else if(!originalLowerRoute)text='DOOR OPEN • CROSS THE PITFALLS';
@@ -683,7 +683,8 @@ function drawDevMap(){
  const cs=mc.width/MW;
  mctx.clearRect(0,0,mc.width,mc.height);
  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){
-  if(map[y][x])mctx.fillStyle='#17120c';
+  if(map[y][x]===2)mctx.fillStyle='#050505';
+  else if(map[y][x])mctx.fillStyle='#17120c';
   else mctx.fillStyle='#c7a95b';
   mctx.fillRect(x*cs,y*cs,cs,cs);
  }
@@ -1519,28 +1520,45 @@ function render(){
    let r,gc,b;
    if(hitExit){
     const ex=hitExitCell.x+.5,ey=hitExitCell.y+.5;
-    let da=Math.atan2(ey-px*0+ey-py,ex-px)-pa;
+    let da=Math.atan2(ey-py,ex-px)-pa;
     while(da>Math.PI)da-=Math.PI*2;
     while(da<-Math.PI)da+=Math.PI*2;
     const doorCenter=W/2+(Math.tan(da)/Math.tan(currentFOV/2))*(W/2);
-    const frameHalf=Math.max(3,line*.42);
-    const innerHalf=frameHalf*.70;
+    const frameHalf=Math.max(3,line*.44);
+    const innerHalf=frameHalf*.68;
     const edge=Math.abs(x-doorCenter);
     const yNorm=(y-top)/Math.max(1,line);
-    const pulse=.88+.12*Math.sin(performance.now()*.004);
-    // A flat, square doorway physically attached to the wall: no rounded corners.
-    if(edge<=frameHalf && yNorm>.04 && yNorm<.98){
-     const inside=edge<innerHalf && yNorm>.10 && yNorm<.94;
-     if(inside){
-      const glow=(.82+.18*Math.sin(performance.now()*.003));
-      r=220*glow;gc=226*glow;b=214*glow;
-      if(yNorm>.86){r=135;gc=128;b=104;}
-     }else{
-      r=34;gc=29;b=22;
-      if(edge>innerHalf*.96){r=88;gc=78;b=55;}
-     }
+    const kind=hitExitCell.name||'NORMAL EXIT';
+    // Straight, wall-mounted exit designs. Each is physically rendered on the
+    // wall cell hit by the ray; there are no rounded corners or floating boxes.
+    if(kind==='LOWER VENT'){
+     const ventHalf=frameHalf*.78;
+     if(edge<=ventHalf&&yNorm>.16&&yNorm<.84){
+      const inner=edge<ventHalf*.82;
+      r=inner?112:42;gc=inner?116:37;b=inner?108:29;
+      if(inner&&Math.floor((yNorm-.16)*28)%3===0){r=54;gc=56;b=52;}
+     }else{r=30;gc=27;b=22;}
+    }else if(kind==='ALTERNATE EXIT'){
+     if(edge<=frameHalf&&yNorm>.03&&yNorm<.98){
+      const inside=edge<innerHalf&&yNorm>.08&&yNorm<.95;
+      if(inside){
+       const glow=.62+.18*Math.sin(performance.now()*.003);
+       r=185*glow;gc=205*glow;b=193*glow;
+      }else{
+       r=edge<innerHalf+1?65:28;gc=edge<innerHalf+1?55:24;b=edge<innerHalf+1?38:19;
+      }
+     }else{r=30;gc=24;b=18;}
     }else{
-     r=45;gc=37;b=26;
+     if(edge<=frameHalf&&yNorm>.02&&yNorm<.99){
+      const inside=edge<innerHalf&&yNorm>.07&&yNorm<.95;
+      if(inside){
+       const glow=.86+.14*Math.sin(performance.now()*.004);
+       r=225*glow;gc=232*glow;b=218*glow;
+       if(yNorm>.86){r=128;gc=119;b=94;}
+      }else{
+       r=edge<innerHalf+1?72:31;gc=edge<innerHalf+1?63:25;b=edge<innerHalf+1?43:18;
+      }
+     }else{r=36;gc=29;b=20;}
     }
    }else{
     const wt=gameMode==="pool"
