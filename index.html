@@ -90,7 +90,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v3</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v4</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div>
 <button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -1007,7 +1007,7 @@ function drawLevel0Entity(center,top,h,unit,phase){
  // Direct cutout of the reference entity: preserve its exact thin, crooked
  // silhouette instead of replacing it with a generic humanoid.
  if(!level0EntityImage.complete)return;
- const aspect=156/275;
+ const aspect=222/323;
  const bob=Math.sin((phase||0)*.035)*Math.min(1.2,h*.012);
  const drawH=Math.max(4,h);
  const drawW=drawH*aspect;
