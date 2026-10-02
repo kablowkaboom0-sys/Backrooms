@@ -1100,6 +1100,8 @@ function move(dt){
  if(!wall(Math.floor(px+dx+r*Math.sign(dx)),Math.floor(py)))px+=dx;
  if(!wall(Math.floor(px),Math.floor(py+dy+r*Math.sign(dy))))py+=dy;
  if(gameMode==="pool"){const targetFloor=poolFloorAt(px,py);pz=0}
+ // Keep the Original Mode room label synced to the player's current room.
+ if(originalMode)updateOriginalObjective();
  // Entering an actual pit cell causes the intended fall to the lower layer.
  if(originalMode&&originalPitAt(Math.floor(px),Math.floor(py))){triggerOriginalDrop();return;}
  if(originalMode&&crouching){
