@@ -510,17 +510,33 @@ function setupOriginalMechanics(m){
  carveLedge(150,60);
  // Keep the lower exit's approach open.
  m[125][76]=0;
- originalLadderCell=nearestWalkable(84,24,14)||nearestWalkable(84,18,14);
- // Pick a real adjacent wall so the broken ladder visibly leans against it.
- originalLadderLeanX=0;originalLadderLeanY=-1;
- if(originalLadderCell){
-  const dirs=[[0,-1],[1,0],[0,1],[-1,0]];
-  const wallDir=dirs.find(([dx,dy])=>{
-   const x=originalLadderCell.x+dx,y=originalLadderCell.y+dy;
-   return x>=0&&y>=0&&x<MW&&y<MH&&m[y]?.[x]===1;
-  });
-  if(wallDir){originalLadderLeanX=wallDir[0];originalLadderLeanY=wallDir[1];}
+ // Choose a ladder tile that is actually approachable: it must be
+ // walkable, have a wall to lean against, and still have at least one
+ // separate walkable side for the player to stand on. This prevents the
+ // ladder from being visually present inside a dead-end that the player
+ // cannot get close to.
+ const ladderDirs=[[0,-1],[1,0],[0,1],[-1,0]];
+ let ladderBest=null,ladderBestDist=Infinity,ladderBestWall=null;
+ for(let y=5;y<44;y++)for(let x=62;x<108;x++){
+  if(m[y]?.[x]!==0)continue;
+  let wallDir=null,openCount=0;
+  for(const [dx,dy] of ladderDirs){
+   const nx=x+dx,ny=y+dy;
+   if(nx<0||ny<0||nx>=MW||ny>=MH)continue;
+   if(m[ny]?.[nx]===1&&!wallDir)wallDir=[dx,dy];
+   if(m[ny]?.[nx]===0)openCount++;
+  }
+  if(!wallDir||openCount<1)continue;
+  const d=Math.hypot(x-84,y-24);
+  if(d<ladderBestDist){
+   ladderBestDist=d;
+   ladderBest={x,y};
+   ladderBestWall=wallDir;
+  }
  }
+ originalLadderCell=ladderBest||nearestWalkable(84,24,14)||nearestWalkable(84,18,14);
+ originalLadderLeanX=ladderBestWall?ladderBestWall[0]:0;
+ originalLadderLeanY=ladderBestWall?ladderBestWall[1]:-1;
  // The key belongs on top of the ladder, not on the floor elsewhere.
  originalKeyCell=originalLadderCell;
 }
