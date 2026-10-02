@@ -596,24 +596,30 @@ function setupOriginalMechanics(m){
  // Winding ledge route from the wooden door to Exit 2 on the far right.
  // Each segment is only one map cell wide, producing the thin-ledge feel
  // from the supplied reference rather than a checkerboard floor.
- const ledgeWaypoints=[
-  // Short entry ledge immediately beyond the wooden door.
-  [128,59],[129,59],[130,60],
-  [135,60],[135,54],[141,54],[141,65],
-  [146,65],[146,57],[150,57],[150,60]
- ];
+ // The Pitfalls use a thin one-cell-wide GRID of ledges, matching the
+ // reference layout rather than one winding path. Every ledge is only one
+ // map tile wide, with regular gaps of void between the grid lines.
+ const ledgeRows=[54,60,66,72];
+ const ledgeCols=[132,138,144,150];
  const carveLedge=(x,y)=>{
   if(x<0||y<0||x>=MW||y>=MH)return;
   m[y][x]=0;
   originalPitCells.delete(x+','+y);
   originalPitLedgeCells.add(x+','+y);
  };
- for(let i=0;i<ledgeWaypoints.length-1;i++){
-  let [x,y]=ledgeWaypoints[i], [tx,ty]=ledgeWaypoints[i+1];
-  carveLedge(x,y);
-  while(x!==tx){x+=Math.sign(tx-x);carveLedge(x,y)}
-  while(y!==ty){y+=Math.sign(ty-y);carveLedge(x,y)}
+ // Entry from the door into the grid.
+ for(let x=128;x<=132;x++)carveLedge(x,59);
+ // Horizontal grid lines.
+ for(const y of ledgeRows){
+  for(let x=132;x<=150;x++)carveLedge(x,y);
  }
+ // Vertical grid lines.
+ for(const x of ledgeCols){
+  for(let y=54;y<=72;y++)carveLedge(x,y);
+ }
+ // Short final approach to Exit 2.
+ for(let y=72;y<=60;y--)carveLedge(150,y);
+ carveLedge(150,60);
 
  // Exit 2 is on the right edge of the Pitfalls, exactly where the reference
  // places it. Exit 1 is on the bottom edge for the lower route.
