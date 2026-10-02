@@ -2534,8 +2534,10 @@ function render(){
      const farX=px+Math.cos(floorRayAngle)*RENDER_DISTANCE;
      const farY=py+Math.sin(floorRayAngle)*RENDER_DISTANCE;
      const ft=carpetTexture(farX,farY);
-     const farFog=Math.max(.18,1-.62);
-     const farLight=Math.max(.32,1-RENDER_DISTANCE*.018)*farFog;
+     // This is still floor, not an atmospheric/background color. Keep its
+     // normal carpet appearance at the horizon; object fog is handled by
+     // the object renderers separately.
+     const farLight=Math.max(.62,1-RENDER_DISTANCE*.010);
      setPix((y*W+x)*4,ft[0]*farLight,ft[1]*farLight,ft[2]*farLight);
     }
    }
