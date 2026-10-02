@@ -670,26 +670,64 @@ function originalInteract(){
 }
 function drawOriginalObjects(){
  if(!originalMode||!gameStarted)return;
- const drawMarker=(cell,kind)=>{
-  if(!cell)return;
+
+ const projectCell=(cell)=>{
+  if(!cell)return null;
   const dx=cell.x+.5-px,dy=cell.y+.5-py,dist=Math.hypot(dx,dy);
-  if(dist<.25||dist>RENDER_DISTANCE)return;
+  if(dist<.25||dist>RENDER_DISTANCE)return null;
   let da=Math.atan2(dy,dx)-pa;
   while(da>Math.PI)da-=Math.PI*2;
   while(da<-Math.PI)da+=Math.PI*2;
-  if(Math.abs(da)>currentFOV*.58)return;
+  if(Math.abs(da)>currentFOV*.58)return null;
   const center=W/2+(Math.tan(da)/Math.tan(currentFOV/2))*(W/2);
   const sx=Math.max(0,Math.min(W-1,Math.floor(center)));
-  if(dist>=depthBuffer[sx])return;
-  const h=Math.max(3,Math.min(16,H/dist*.18));
+  if(dist>=depthBuffer[sx])return null;
+  return {center,dist};
+ };
+
+ // The broken ladder is a real visual landmark. Previously only the four
+ // collectible pieces were drawn, so there was no obvious ladder to find.
+ const ladder=projectCell(originalLadderCell);
+ if(ladder){
+  const h=Math.max(7,Math.min(30,H/ladder.dist*.82));
+  const w=Math.max(4,h*.38);
+  const cx=ladder.center;
+  const bottom=H/2+h*.34;
+  const top=bottom-h;
+
+  g.fillStyle='rgba(55,32,15,.96)';
+  g.fillRect(cx-w*.5,top,w*.16,h);
+  g.fillRect(cx+w*.34,top,w*.16,h);
+
+  g.fillStyle='rgba(170,122,55,.98)';
+  const rungH=Math.max(1,h*.07);
+  for(let i=1;i<5;i++){
+   const y=top+h*(i/5);
+   g.fillRect(cx-w*.34,y,w*.68,rungH);
+  }
+
+  // Small label makes the objective landmark easy to spot without
+  // changing the normal world geometry.
+  if(ladder.dist<8){
+   g.font='6px monospace';
+   g.textAlign='center';
+   g.fillStyle='rgba(255,235,150,.9)';
+   g.fillText('LADDER',cx,Math.max(6,top-3));
+  }
+ }
+
+ const drawMarker=(cell,kind)=>{
+  const p=projectCell(cell);
+  if(!p)return;
+  const h=Math.max(3,Math.min(16,H/p.dist*.18));
   const w=Math.max(2,h*.42);
   const top=H/2-h*.55;
   if(kind==='piece')g.fillStyle='#d8b84c';
   else if(kind==='key')g.fillStyle='#ddd8c2';
   else return;
-  g.fillRect(center-w/2,top,w,h);
+  g.fillRect(p.center-w/2,top,w,h);
   g.fillStyle='rgba(255,255,255,.35)';
-  g.fillRect(center-w/4,top,w*.18,h);
+  g.fillRect(p.center-w/4,top,w*.18,h);
  };
  for(const p of originalLadderPieces)drawMarker(p,'piece');
  if(originalLadderCollected>=4&&!originalHasKey)drawMarker(originalKeyCell,'key');
