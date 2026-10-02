@@ -861,6 +861,9 @@ function makeOriginalMap(){
  door(127,73);
  const hallway8=[[127,73],[128,73],[129,73],[130,73],[131,73],[132,73],[133,73],[134,73]];
  for(const [x,y] of hallway8)door(x,y);
+ // Turn the short horizontal connector into a continuous, narrow hallway
+ // down to Room 8's doorway.
+ for(let y=74;y<=85;y++)door(134,y);
 
  // Enclose room 8 with a small doorway from the hallway.
  lineWall(128,85,141,85);door(134,85);
