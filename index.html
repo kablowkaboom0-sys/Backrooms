@@ -96,16 +96,16 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="horrorChoices">
 <div class="sub">CHOOSE GAME MODE</div>
-<a class="mode" href="#peaceful" data-playmode="peaceful" role="button">PEACEFUL MODE</a>
-<a class="mode" href="#horror" data-playmode="horror" role="button">HORROR MODE</a>
+<a class="mode" href="#level0-peaceful" data-playmode="peaceful" role="button">PEACEFUL MODE</a>
+<a class="mode" href="#level0-horror" data-playmode="horror" role="button">HORROR MODE</a>
 <a id="backLevelsFromModes" href="#levels" role="button">BACK TO LEVELS</a>
 </div>
 <div id="difficultyChoices">
-<a class="diff" href="#easy" data-size="21" role="button">EASY</a>
-<a class="diff" href="#medium" data-size="31" role="button">MEDIUM</a>
-<a class="diff" href="#hard" data-size="41" role="button">HARD</a>
-<a class="diff" id="originalModeBtn" href="#original" data-original="1" role="button">LEVEL 0 ORIGINAL MODE</a>
-<a class="diff" id="robloxModeBtn" href="#roblox" data-roblox="1" role="button">ROBLOX BACKROOMS</a>
+<a class="diff" href="#level0-easy" data-size="21" role="button">EASY</a>
+<a class="diff" href="#level0-medium" data-size="31" role="button">MEDIUM</a>
+<a class="diff" href="#level0-hard" data-size="41" role="button">HARD</a>
+<a class="diff" id="originalModeBtn" href="#level0-original" data-original="1" role="button">LEVEL 0 ORIGINAL MODE</a>
+<a class="diff" id="robloxModeBtn" href="#level0-roblox" data-roblox="1" role="button">ROBLOX BACKROOMS</a>
 <a class="diff" id="poolOriginalModeBtn" href="#pool-original" data-pool-original="1" role="button">POOL ROOMS ORIGINAL MODE</a>
 <a id="backModes" href="#game-mode" role="button">BACK TO GAME MODE</a>
 </div>
@@ -3192,6 +3192,78 @@ document.getElementById('backLevelsFromModes').onclick=e=>{ e.preventDefault();
  document.getElementById('difficultyChoices').style.display='none';
  document.getElementById('startSub').textContent='CHOOSE A LEVEL';
 };
+
+// BrowseHere fallback: the TV browser can navigate normal links even when it does
+// not deliver the remote's OK/Enter event to JavaScript. Menu choices therefore
+// also work through URL hashes, which survive a browser navigation/reload.
+let tvHashApplying=false;
+function applyTVMenuHash(){
+ const h=(location.hash||'').toLowerCase().replace(/^#/,'');
+ if(!h)return;
+ tvHashApplying=true;
+ try{
+  const level0=h==='level0'||h==='level0-peaceful'||h==='level0-horror'||/^level0-(easy|medium|hard|original|roblox)$/.test(h);
+  const pool=h==='pool'||h==='pool-peaceful'||h==='pool-horror'||/^pool-(easy|medium|hard|original)$/.test(h);
+  if(h==='levels'){
+   document.getElementById('modeChoices').style.display='flex';
+   document.getElementById('horrorChoices').style.display='none';
+   document.getElementById('difficultyChoices').style.display='none';
+   document.getElementById('startSub').textContent='CHOOSE A LEVEL';
+   return;
+  }
+  if(level0||pool){
+   gameMode=level0?'level0':'pool';
+   originalMode=false;poolOriginalMode=false;robloxMode=false;
+   document.getElementById('modeChoices').style.display='none';
+   document.getElementById('horrorChoices').style.display='flex';
+   document.getElementById('difficultyChoices').style.display='none';
+   document.getElementById('startSub').textContent=(gameMode==='pool'?'POOL ROOMS':'LEVEL 0')+' // CHOOSE MODE';
+   const originalBtn=document.getElementById('originalModeBtn');
+   if(originalBtn)originalBtn.style.display=gameMode==='level0'?'block':'none';
+   const poolOriginalBtn=document.getElementById('poolOriginalModeBtn');
+   if(poolOriginalBtn)poolOriginalBtn.style.display=gameMode==='pool'?'block':'none';
+   const robloxBtn=document.getElementById('robloxModeBtn');
+   if(robloxBtn)robloxBtn.style.display=gameMode==='level0'?'block':'none';
+   if(h==='level0'||h==='pool')return;
+  }
+  if(h==='level0-peaceful'||h==='level0-horror'||h==='pool-peaceful'||h==='pool-horror'){
+   gameMode=h.startsWith('pool-')?'pool':'level0';
+   playMode=h.endsWith('peaceful')?'peaceful':'horror';
+   document.getElementById('modeChoices').style.display='none';
+   document.getElementById('horrorChoices').style.display='none';
+   document.getElementById('difficultyChoices').style.display='flex';
+   document.getElementById('startSub').textContent=(gameMode==='pool'?'POOL ROOMS':'LEVEL 0')+' // '+(playMode==='peaceful'?'PEACEFUL':'HORROR')+' // CHOOSE DIFFICULTY';
+   return;
+  }
+  const m=h.match(/^(level0|pool)-(easy|medium|hard)$/);
+  if(m){
+   gameMode=m[1];
+   playMode=playMode||'horror';
+   const size={easy:21,medium:31,hard:41}[m[2]];
+   originalMode=false;poolOriginalMode=false;robloxMode=false;
+   difficultySize=size;
+   document.getElementById('startScreen').style.display='none';
+   gameStarted=true;
+   startGame(size);
+   return;
+  }
+  if(h==='level0-original'){
+   gameMode='level0';playMode=playMode||'horror';originalMode=true;poolOriginalMode=false;robloxMode=false;
+   document.getElementById('startScreen').style.display='none';gameStarted=true;startGame(41);return;
+  }
+  if(h==='level0-roblox'){
+   gameMode='level0';playMode=playMode||'horror';originalMode=false;poolOriginalMode=false;robloxMode=true;
+   document.getElementById('startScreen').style.display='none';gameStarted=true;startGame(41);return;
+  }
+  if(h==='pool-original'){
+   gameMode='pool';playMode=playMode||'horror';originalMode=false;poolOriginalMode=true;robloxMode=false;
+   document.getElementById('startScreen').style.display='none';gameStarted=true;startGame(41);return;
+  }
+ }finally{
+  tvHashApplying=false;
+ }
+}
+addEventListener('hashchange',applyTVMenuHash);
 document.querySelectorAll('#modeChoices .mode').forEach(btn=>btn.onclick=e=>{ e.preventDefault();
  gameMode=btn.dataset.mode;
  originalMode=false;poolOriginalMode=false;
@@ -3205,7 +3277,11 @@ document.querySelectorAll('#modeChoices .mode').forEach(btn=>btn.onclick=e=>{ e.
  document.getElementById('horrorChoices').style.display='flex';
  document.getElementById('startSub').textContent=gameMode==="pool"?'POOL ROOMS // CHOOSE MODE':'LEVEL 0 // CHOOSE MODE';
 });
-document.querySelectorAll('#horrorChoices .mode').forEach(btn=>btn.onclick=e=>{ e.preventDefault();
+document.querySelectorAll('#horrorChoices .mode').forEach(btn=>btn.onclick=e=>{
+ e.preventDefault();
+ const prefix=gameMode==='pool'?'pool':'level0';
+ const nextHash='#'+prefix+'-'+btn.dataset.playmode;
+ if(location.hash!==nextHash){location.hash=nextHash;return;}
  playMode=btn.dataset.playmode;
  document.getElementById('horrorChoices').style.display='none';
  document.getElementById('difficultyChoices').style.display='flex';
@@ -3367,7 +3443,16 @@ document.querySelector('#ratioButtons button[data-ratio="native"]').classList.ad
 document.querySelector('#aspectButtons button[data-aspect="native"]').classList.add('active');
 
 let last=performance.now(),acc=0;
-document.querySelectorAll('.diff').forEach(btn=>btn.onclick=e=>{ e.preventDefault();
+document.querySelectorAll('.diff').forEach(btn=>btn.onclick=e=>{
+ e.preventDefault();
+ const size=+btn.dataset.size||0;
+ if(size){
+  const prefix=gameMode==='pool'?'pool':'level0';
+  const name=size===21?'easy':size===31?'medium':'hard';
+  const nextHash='#'+prefix+'-'+name;
+  if(location.hash!==nextHash){location.hash=nextHash;return;}
+ }
+
  if(btn.dataset.poolOriginal){
   originalMode=false;robloxMode=false;poolOriginalMode=true;
   startGame(75);
