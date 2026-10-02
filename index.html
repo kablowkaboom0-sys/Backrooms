@@ -192,6 +192,7 @@ let originalPitStarted=false;
 let originalDoorCell=null;
 let originalDoorOpen=false;
 let originalPitCells=new Set();
+let originalPitLedgeCells=new Set();
 let originalPitfallTriggered=false;
 let originalLowerRoute=false;
 let gameMode="level0";
@@ -358,10 +359,10 @@ function makeOriginalMap(){
 
 function setupOriginalMechanics(m){
  originalRoomZones=[
-  {name:'PILLAR ROOM',x1:108,y1:42,x2:140,y2:67},
+  // Pitfalls get priority because this area overlaps the old broad room zones.
+  {name:'PITFALLS',x1:128,y1:46,x2:151,y2:86},
+  {name:'PILLAR ROOM',x1:56,y1:40,x2:108,y2:70},
   {name:'LADDER ROOM',x1:62,y1:4,x2:108,y2:44},
-  // The checkerboard Pitfalls are the large left-hand room relative to the fixed spawn.
-  {name:'PITFALLS',x1:56,y1:46,x2:151,y2:106},
   {name:'LOWER LEVEL',x1:105,y1:88,x2:151,y2:126},
   {name:'MANILA ROOM',x1:137,y1:101,x2:151,y2:116},
   {name:'LEVEL 0.2 AREA',x1:142,y1:113,x2:151,y2:126}
@@ -438,34 +439,65 @@ function setupOriginalMechanics(m){
   return ns.find(([x,y])=>x>=0&&y>=0&&x<MW&&y<MH&&m[y][x]===0)||[e.x,e.y];
  });
 
- // The locked wooden door is on the right-hand approach to the Pitfalls, matching the reference map.
+ // The locked wooden door sits just before the Pitfalls, matching the reference-map approach.
  let door=null,db=Infinity;
- for(let y=50;y<=68;y++)for(let x=136;x<=150;x++){
+ for(let y=52;y<=66;y++)for(let x=122;x<=130;x++){
   if(m[y]?.[x]!==1)continue;
   const adj=[[x+1,y],[x-1,y],[x,y+1],[x,y-1]].some(([ax,ay])=>ax>=0&&ay>=0&&ax<MW&&ay<MH&&m[ay][ax]===0);
   if(!adj)continue;
-  const d=Math.hypot(x-145,y-59);
+  const d=Math.hypot(x-127,y-59);
   if(d<db){db=d;door={x,y};}
  }
- originalDoorCell=door||{x:67,y:66};
+ originalDoorCell=door||{x:127,y:59};
 
- // The pitfall floor is represented as a third collision state: 2 = hole.
- // These are the checkerboard holes in the supplied Level 0 map.
- const pitCenters=[];
- // 8 columns x 5 rows: the checkerboard footprint visible on the supplied map.
- for(let y of [52,64,76,88,100])for(let x of [64,76,88,100,112,124,136,148]){
-  if(m[y]?.[x]===1)pitCenters.push({x,y});
- }
- for(const p of pitCenters){
-  m[p.y][p.x]=2;
-  originalPitCells.add(p.x+','+p.y);
- }
- // Give each pit a little footprint rather than a single-pixel trigger.
- for(const p of pitCenters){
-  if(m[p.y]?.[p.x]===2){
-   for(const [dx,dy] of [[0,0],[1,0],[0,1]])if(m[p.y+dy]?.[p.x+dx]===1)m[p.y+dy][p.x+dx]=2;
+ // Rebuild the Pitfalls as a true void crossed by narrow, one-cell-wide ledges.
+ // Walking onto the void drops the player; only the ledge cells are safe.
+ const pitX1=128,pitX2=150,pitY1=48,pitY2=84;
+ for(let y=pitY1;y<=pitY2;y++){
+  for(let x=pitX1;x<=pitX2;x++){
+   if(x<0||y<0||x>=MW||y>=MH)continue;
+   m[y][x]=2;
+   originalPitCells.add(x+','+y);
   }
  }
+
+ // Winding ledge route from the wooden door to Exit 2 on the far right.
+ // Each segment is only one map cell wide, producing the thin-ledge feel
+ // from the supplied reference rather than a checkerboard floor.
+ const ledgeWaypoints=[
+  [130,60],[135,60],[135,54],[141,54],[141,65],
+  [146,65],[146,57],[150,57],[150,60]
+ ];
+ const carveLedge=(x,y)=>{
+  if(x<0||y<0||x>=MW||y>=MH)return;
+  m[y][x]=0;
+  originalPitCells.delete(x+','+y);
+  originalPitLedgeCells.add(x+','+y);
+ };
+ for(let i=0;i<ledgeWaypoints.length-1;i++){
+  let [x,y]=ledgeWaypoints[i], [tx,ty]=ledgeWaypoints[i+1];
+  carveLedge(x,y);
+  while(x!==tx){x+=Math.sign(tx-x);carveLedge(x,y)}
+  while(y!==ty){y+=Math.sign(ty-y);carveLedge(x,y)}
+ }
+
+ // Exit 2 is on the right edge of the Pitfalls, exactly where the reference
+ // places it. Exit 1 is on the bottom edge for the lower route.
+ m[60][151]=1;
+ m[126][76]=1;
+ exitCells=[
+  {x:151,y:60,name:'NORMAL EXIT',label:'EXIT 2'},
+  {x:76,y:126,name:'ALTERNATE EXIT',label:'EXIT 1'}
+ ];
+ exitCell=exitCells[0];
+ exitEntryCells=[
+  [150,60],
+  [76,125]
+ ];
+ // Make sure the ledge reaches the Exit 2 entry tile.
+ carveLedge(150,60);
+ // Keep the lower exit's approach open.
+ m[125][76]=0;
  originalLadderCell=nearestWalkable(84,24,14)||nearestWalkable(84,18,14);
  originalKeyCell=nearestWalkable(84,18,10)||originalLadderCell;
 }
@@ -483,11 +515,14 @@ function originalPitActive(){
  if(!originalMode||!originalDoorOpen||originalLowerRoute||originalPitCrossed)return false;
  const x=Math.floor(px),y=Math.floor(py);
  // The Pitfalls are the large checkerboard room immediately left of the spawn.
- // Balance starts only after entering that room from the door side and never while standing in a hole.
- return originalRoomAt(x,y)==='PITFALLS'&&!originalPitAt(x,y);
+ // Balance only applies while actually standing on one of the thin ledges.
+ return originalPitLedgeAt(x,y);
 }
 function originalPitAt(x,y){
  return originalMode&&originalPitCells.has(x+','+y);
+}
+function originalPitLedgeAt(x,y){
+ return originalMode&&originalPitLedgeCells.has(x+','+y);
 }
 function updateOriginalObjective(){
  const el=document.getElementById('originalObjective');
@@ -555,7 +590,7 @@ function triggerOriginalDrop(){
  originalLeanInput=0;
  playerHealth=Math.max(1,playerHealth-15);
  updateHealthUI();
- const recovery=nearestWalkable(132,103,12)||nearestWalkable(132,96,12)||startCell;
+ const recovery=nearestWalkable(132,96,16)||nearestWalkable(120,100,16)||startCell;
  px=recovery.x+.5;py=recovery.y+.5;pa=Math.PI;
  updateOriginalObjective();
 }
@@ -574,10 +609,9 @@ function updateOriginalPitBalance(now,dt){
  if(keys.w||keys.s||keys.a||keys.d)originalBalance += Math.sin(now*.0081)*.035*dt;
  originalBalance=Math.max(-1.05,Math.min(1.05,originalBalance));
  updateBalanceUI();
- // The fixed spawn approaches the Pitfalls from the right, so crossing progress is horizontal.
- if(px<145)originalPitStarted=true;
- const progress=Math.max(0,Math.min(1,(145-px)/(145-60)));
- if(originalPitStarted&&progress>=.94&&originalRoomAt(Math.floor(px),Math.floor(py))==='PITFALLS'){
+ // The player enters the ledges near x=130 and must reach the far-right Exit 2.
+ if(px>132&&originalPitLedgeAt(Math.floor(px),Math.floor(py)))originalPitStarted=true;
+ if(originalPitStarted&&px>148&&Math.floor(py)>=54&&Math.floor(py)<=66&&originalPitLedgeAt(Math.floor(px),Math.floor(py))){
   originalPitCrossed=true;
   originalBalance=0;
   originalLeanInput=0;
@@ -1102,7 +1136,7 @@ function move(dt){
  if(gameMode==="pool"){const targetFloor=poolFloorAt(px,py);pz=0}
  // Keep the Original Mode room label synced to the player's current room.
  if(originalMode)updateOriginalObjective();
- // Entering an actual pit cell causes the intended fall to the lower layer.
+ // Entering the void beside a ledge causes the intended fall to the lower layer.
  if(originalMode&&originalPitAt(Math.floor(px),Math.floor(py))){triggerOriginalDrop();return;}
  if(originalMode&&crouching){
   for(let i=0;i<exitEntryCells.length;i++){
