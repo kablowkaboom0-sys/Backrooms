@@ -2333,6 +2333,10 @@ function drawLevel0Entity(center,top,h,unit,phase,dist){
  return drawW;
 }
 function drawSmiler(center,top,h,unit,dist){
+ const style=objectDistanceStyle(dist);
+ g.save();
+ g.globalAlpha=style.alpha;
+ g.filter='brightness('+style.brightness.toFixed(3)+')';
  // Pool Rooms entity: a floating Smiler face, with its body hidden in
  // darkness. It stays as a simple pixel-art face while scaling with depth.
  const faceW=Math.max(.9,h*.34);
@@ -2368,6 +2372,7 @@ function drawSmiler(center,top,h,unit,dist){
  }
  
  // No rectangular glow layer, so the Smiler has no visible box around it.
+ g.restore();
 }
 
 function drawEntities(){
