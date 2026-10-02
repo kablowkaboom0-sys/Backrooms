@@ -98,7 +98,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v25</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v26</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div><div id="balanceUI"><div class="balanceLabel">BALANCE</div><div class="balanceBar"><div id="balanceFill"></div></div><div id="balanceText">CENTER</div></div><div id="originalObjective"></div>
 <button id="objectiveBtn">OBJECTIVE</button><button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -185,7 +185,10 @@ let originalPitCrossed=false;
 let originalBalance=0;
 let originalLeanInput=0;
 let crouching=false;
+let crouchHeld=false;
+let crouchToggle=false;
 let originalHasKey=false;
+let originalPitStarted=false;
 let originalDoorCell=null;
 let originalDoorOpen=false;
 let originalPitCells=new Set();
@@ -375,6 +378,7 @@ function setupOriginalMechanics(m){
  originalLadderCell=null;
  originalInteractQueued=false;
  originalPitCrossed=false;
+ originalPitStarted=false;
  originalBalance=0;
  originalLeanInput=0;
  originalPitCells=new Set();
@@ -477,7 +481,8 @@ function originalDoorLockedAt(x,y){
 function originalPitActive(){
  if(!originalMode||!originalDoorOpen||originalLowerRoute||originalPitCrossed)return false;
  const x=Math.floor(px),y=Math.floor(py);
- // Balance only while standing on the Pitfalls' safe walkways, never in a hole.
+ // The Pitfalls are the large checkerboard room immediately left of the spawn.
+ // Balance starts only after entering that room from the door side and never while standing in a hole.
  return originalRoomAt(x,y)==='PITFALLS'&&!originalPitAt(x,y);
 }
 function originalPitAt(x,y){
@@ -569,8 +574,9 @@ function updateOriginalPitBalance(now,dt){
  originalBalance=Math.max(-1.05,Math.min(1.05,originalBalance));
  updateBalanceUI();
  // The fixed spawn approaches the Pitfalls from the right, so crossing progress is horizontal.
- const progress=Math.max(0,Math.min(1,(151-px)/(151-58)));
- if(progress>=.90){
+ if(px<145)originalPitStarted=true;
+ const progress=Math.max(0,Math.min(1,(145-px)/(145-60)));
+ if(originalPitStarted&&progress>=.94&&originalRoomAt(Math.floor(px),Math.floor(py))==='PITFALLS'){
   originalPitCrossed=true;
   originalBalance=0;
   originalLeanInput=0;
@@ -809,7 +815,7 @@ function reset(){
  updateHealthUI();
  document.getElementById('panel').style.display='none';clearKeys();
 }
-function clearKeys(){for(const k in keys)keys[k]=false;originalLeanInput=0;originalInteractQueued=false;crouching=false;updateCrouchButton()}
+function clearKeys(){for(const k in keys)keys[k]=false;originalLeanInput=0;originalInteractQueued=false;crouching=false;crouchHeld=false;crouchToggle=false;updateCrouchButton()}
 function drawDevMap(){
  const mc=document.getElementById('mapCanvas'),mctx=mc.getContext('2d');
  const cs=mc.width/MW;
@@ -1005,8 +1011,8 @@ function wall(x,y){
  return map[y][x]===1;
 }
 function startGame(size){
- MW=gameMode==="pool"?(size===21?90:size===31?110:130):(originalMode?75:size);
- MH=gameMode==="pool"?MW:(originalMode?59:size);
+ MW=gameMode==="pool"?(size===21?90:size===31?110:130):(originalMode?152:size);
+ MH=gameMode==="pool"?MW:(originalMode?127:size);
  difficultySize=size;
  startCell=gameMode==="pool"?{x:1,y:1}:{x:1,y:1};
  gameStarted=true;
@@ -1034,7 +1040,7 @@ function atExit(x,y){
 }
 function move(dt){
  // Resolve crouch state before movement/camera calculations so it applies immediately.
- crouching=!!keys.control;
+ crouching=crouchHeld||crouchToggle;
  // Physical gamepad sticks mirror the two mobile joysticks.
  const gx=gamepadMoveX, gy=gamepadMoveY;
  if(Math.abs(gx)>.01||Math.abs(gy)>.01){
@@ -1063,9 +1069,10 @@ function move(dt){
  if(originalMode&&originalPitAt(Math.floor(px),Math.floor(py))){triggerOriginalDrop();return;}
  if(originalMode&&crouching){
   for(let i=0;i<exitEntryCells.length;i++){
-   const e=exitEntryCells[i],name=exitCells[i]?.name||'';
-   const near=Math.hypot(px-(e[0]+.5),py-(e[1]+.5))<1.45;
-   if(!near)continue;
+   const e=exitEntryCells[i],wallExit=exitCells[i],name=wallExit?.name||'';
+   const nearEntry=Math.hypot(px-(e[0]+.5),py-(e[1]+.5))<1.8;
+   const nearWall=Math.hypot(px-(wallExit.x+.5),py-(wallExit.y+.5))<1.8;
+   if(!nearEntry&&!nearWall)continue;
    const ready=name==='NORMAL EXIT'
     ?(originalLadderClimbed&&originalHasKey&&originalDoorOpen&&originalPitCrossed&&!originalLowerRoute)
     :(name==='ALTERNATE EXIT'&&originalLowerRoute);
@@ -1766,13 +1773,14 @@ function render(){
 addEventListener('keydown',e=>{
  const k=e.key.toLowerCase();
  if(k==='f'&&originalMode){queueOriginalInteract();e.preventDefault();return}
- if(k==='control'||k==='c'){keys.control=true;e.preventDefault();return}
+ if(k==='control'){crouchHeld=true;crouching=true;updateCrouchButton();e.preventDefault();return}
+ if(k==='c'){crouchToggle=!crouchToggle;crouching=crouchHeld||crouchToggle;updateCrouchButton();e.preventDefault();return}
  if(k==='escape'||k==='p'){togglePause();return}
  if(k==='m'){const panel=document.getElementById('mapPanel');if(panel.style.display==='flex')closeMap();else openMap();return}
  keys[k]=true;
  if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();
 });
-addEventListener('keyup',e=>{const k=e.key.toLowerCase();keys[k]=false;if(k==='control'||k==='c')crouching=false;updateCrouchButton()});
+addEventListener('keyup',e=>{const k=e.key.toLowerCase();keys[k]=false;if(k==='control'){crouchHeld=false;crouching=crouchHeld||crouchToggle;updateCrouchButton()}});
 
 let drag=false,lastX=0;
 canvas.onpointerdown=e=>{if(paused||finished)return;drag=true;lastX=e.clientX;canvas.setPointerCapture(e.pointerId)};
@@ -1806,9 +1814,9 @@ function updateCrouchButton(){
 crouchBtn.onclick=e=>{
  e.preventDefault();
  if(paused||finished)return;
- // Touch crouch is a toggle so it cannot immediately release on a touchscreen pointer-up.
- crouching=!crouching;
- keys.control=crouching;
+ // Touch crouch is an explicit toggle; pointer-up cannot cancel it.
+ crouchToggle=!crouchToggle;
+ crouching=crouchHeld||crouchToggle;
  updateCrouchButton();
 };
 
@@ -1888,7 +1896,8 @@ document.getElementById('retry').onclick=()=>{
  document.getElementById('interactBtn').style.display='none';
  document.getElementById('crouchBtn').style.display='none';
  document.getElementById('balanceUI').style.display='none';
- crouching=false;updateCrouchButton();
+ crouching=false;crouchHeld=false;crouchToggle=false;
+ crouching=false;crouchHeld=false;crouchToggle=false;updateCrouchButton();
 };
 updateClueToggle();
 document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
