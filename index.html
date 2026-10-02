@@ -2724,7 +2724,7 @@ function render(){
   const rx=Math.cos(ra),ry=Math.sin(ra);
   const rayScale=robloxMode?ROBLOX_MAP_SCALE:1;
   const rayPX=px*rayScale,rayPY=py*rayScale;
-  let mx=Math.floor(rayPX),my=Math.floor(rayPY),side=0,hitExit=false,hitExitCell=null,dist=RENDER_DISTANCE*rayScale+1;
+  let mx=Math.floor(rayPX),my=Math.floor(rayPY),side=0,hitExit=false,hitExitCell=null,hitDoor=false,hitDoorCell=null,dist=RENDER_DISTANCE*rayScale+1;
   const ddx=Math.abs(1/(rx||1e-9)),ddy=Math.abs(1/(ry||1e-9));
   const sx=rx<0?-1:1,sy=ry<0?-1:1;
   let sdx=rx<0?(rayPX-mx)*ddx:(mx+1-rayPX)*ddx;
@@ -2734,13 +2734,15 @@ function render(){
   for(let i=0;i<raySteps;i++){
    if(sdx<sdy){dist=sdx;sdx+=ddx;mx+=sx;side=0}
    else{dist=sdy;sdy+=ddy;my+=sy;side=1}
+   if(!robloxMode&&originalMode&&originalDoorLockedAt(mx,my)){hitDoor=true;hitDoorCell={x:mx,y:my};break;}
    if(!robloxMode&&originalMode&&atExitWallCell(mx,my)){hitExit=true;hitExitCell={x:mx,y:my};break;}
    if(robloxMode ? map[my]?.[mx]===1 : wall(mx,my))break;
    if(!robloxMode&&atExit(mx,my)){hitExit=true;hitExitCell={x:mx,y:my};break}
   }
 
-  if(hitExit){
-   const ex=hitExitCell.x+.5-px,ey=hitExitCell.y+.5-py;
+  if(hitExit||hitDoor){
+   const hitCell=hitDoor?hitDoorCell:hitExitCell;
+   const ex=hitCell.x+.5-px,ey=hitCell.y+.5-py;
    dist=Math.max(.05,ex*rx+ey*ry);
   }
   dist=Math.max(.05,dist*Math.cos(ra-pa));
@@ -2767,7 +2769,26 @@ function render(){
 
   for(let y=top;y<bottom;y++){
    let r,gc,b;
-   if(hitExit){
+   if(hitDoor){
+    const ex=hitDoorCell.x+.5,ey=hitDoorCell.y+.5;
+    let da=Math.atan2(ey-py,ex-px)-pa;
+    while(da>Math.PI)da-=Math.PI*2;
+    while(da<-Math.PI)da+=Math.PI*2;
+    const doorCenter=W/2+(Math.tan(da)/Math.tan(currentFOV/2))*(W/2);
+    const frameHalf=Math.max(3,line*.44);
+    const edge=Math.abs(x-doorCenter);
+    const yNorm=(y-top)/Math.max(1,line);
+    const plank=Math.floor((x+doorCenter)*.5)%4===0?-10:0;
+    const trim=edge>frameHalf*.88||yNorm<.035||yNorm>.965;
+    if(trim){r=34;gc=23;b=14;}
+    else{
+     r=76+plank;gc=43+plank*.45;b=22+plank*.25;
+     const braceA=Math.abs((yNorm-.5)-((x-doorCenter)/Math.max(1,line))*.32)<.055;
+     const braceB=Math.abs((yNorm-.5)+((x-doorCenter)/Math.max(1,line))*.32)<.055;
+     if(braceA||braceB){r=112;gc=67;b=31;}
+     if(yNorm>.82){r=54;gc=32;b=17;}
+    }
+   }else if(hitExit){
     const ex=hitExitCell.x+.5,ey=hitExitCell.y+.5;
     let da=Math.atan2(ey-py,ex-px)-pa;
     while(da>Math.PI)da-=Math.PI*2;
@@ -2798,21 +2819,16 @@ function render(){
       }
      }else{r=30;gc=24;b=18;}
     }else{
-     // Pitfall door: render the whole hit wall column as a wooden door.
-     // This prevents the actual door cell from looking like an ordinary
-     // Level 0 wall with only a small screen-space marker on top.
-     const doorPhase=Math.floor((x+doorCenter)*.5)%4;
-     const plank=doorPhase===0?-10:0;
-     const trim=(edge>frameHalf*.88||yNorm<.035||yNorm>.965);
-     if(trim){
-      r=34;gc=23;b=14;
-     }else{
-      r=76+plank;gc=43+plank*.45;b=22+plank*.25;
-      const braceA=Math.abs((yNorm-.5)-((x-doorCenter)/Math.max(1,line))*.32)<.055;
-      const braceB=Math.abs((yNorm-.5)+((x-doorCenter)/Math.max(1,line))*.32)<.055;
-      if(braceA||braceB){r=112;gc=67;b=31;}
-      if(yNorm>.82){r=54;gc=32;b=17;}
-     }
+     if(edge<=frameHalf&&yNorm>.02&&yNorm<.99){
+      const inside=edge<innerHalf&&yNorm>.07&&yNorm<.95;
+      if(inside){
+       const glow=.86+.14*Math.sin(performance.now()*.004);
+       r=225*glow;gc=232*glow;b=218*glow;
+       if(yNorm>.86){r=128;gc=119;b=94;}
+      }else{
+       r=edge<innerHalf+1?72:31;gc=edge<innerHalf+1?63:25;b=edge<innerHalf+1?43:18;
+      }
+     }else{r=36;gc=29;b=20;}
     }
    }else{
     const wallWorldX=robloxMode?mx/ROBLOX_MAP_SCALE:mx;
