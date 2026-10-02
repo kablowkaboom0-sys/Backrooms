@@ -91,23 +91,23 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <h1>BACKROOMS</h1>
 <div class="sub" id="startSub">CHOOSE A LEVEL</div>
 <div id="modeChoices">
-<a class="mode" href="#level0" data-mode="level0" role="button">LEVEL 0</a>
-<a class="mode" href="#pool" data-mode="pool" role="button">POOL ROOMS</a>
+<a class="mode" href="?tv=level0" data-mode="level0" role="button">LEVEL 0</a>
+<a class="mode" href="?tv=pool" data-mode="pool" role="button">POOL ROOMS</a>
 </div>
 <div id="horrorChoices">
 <div class="sub">CHOOSE GAME MODE</div>
-<a class="mode" href="#level0-peaceful" data-playmode="peaceful" role="button">PEACEFUL MODE</a>
-<a class="mode" href="#level0-horror" data-playmode="horror" role="button">HORROR MODE</a>
-<a id="backLevelsFromModes" href="#levels" role="button">BACK TO LEVELS</a>
+<a class="mode" href="?tv=level0-peaceful" data-playmode="peaceful" role="button">PEACEFUL MODE</a>
+<a class="mode" href="?tv=level0-horror" data-playmode="horror" role="button">HORROR MODE</a>
+<a id="backLevelsFromModes" href="?tv=levels" role="button">BACK TO LEVELS</a>
 </div>
 <div id="difficultyChoices">
-<a class="diff" href="#level0-easy" data-size="21" role="button">EASY</a>
-<a class="diff" href="#level0-medium" data-size="31" role="button">MEDIUM</a>
-<a class="diff" href="#level0-hard" data-size="41" role="button">HARD</a>
-<a class="diff" id="originalModeBtn" href="#level0-original" data-original="1" role="button">LEVEL 0 ORIGINAL MODE</a>
-<a class="diff" id="robloxModeBtn" href="#level0-roblox" data-roblox="1" role="button">ROBLOX BACKROOMS</a>
-<a class="diff" id="poolOriginalModeBtn" href="#pool-original" data-pool-original="1" role="button">POOL ROOMS ORIGINAL MODE</a>
-<a id="backModes" href="#game-mode" role="button">BACK TO GAME MODE</a>
+<a class="diff" href="?tv=level0-easy" data-size="21" role="button">EASY</a>
+<a class="diff" href="?tv=level0-medium" data-size="31" role="button">MEDIUM</a>
+<a class="diff" href="?tv=level0-hard" data-size="41" role="button">HARD</a>
+<a class="diff" id="originalModeBtn" href="?tv=level0-original" data-original="1" role="button">LEVEL 0 ORIGINAL MODE</a>
+<a class="diff" id="robloxModeBtn" href="?tv=level0-roblox" data-roblox="1" role="button">ROBLOX BACKROOMS</a>
+<a class="diff" id="poolOriginalModeBtn" href="?tv=pool-original" data-pool-original="1" role="button">POOL ROOMS ORIGINAL MODE</a>
+<a id="backModes" href="?tv=back-modes" role="button">BACK TO GAME MODE</a>
 </div>
 </div>
 <div id="ui">
@@ -3198,6 +3198,48 @@ document.getElementById('backLevelsFromModes').onclick=e=>{ e.preventDefault();
 // not deliver the remote's OK/Enter event to JavaScript. Menu choices therefore
 // also work through URL hashes, which survive a browser navigation/reload.
 let tvHashApplying=false;
+// BrowseHere fallback: use a real page navigation/query string. This does not
+// depend on BrowseHere forwarding the remote's OK button to JavaScript.
+function applyTVQuery(){
+ const q=new URLSearchParams(location.search).get('tv');
+ if(!q)return false;
+ const show=(id)=>document.getElementById(id).style.display='flex';
+ const hide=(id)=>document.getElementById(id).style.display='none';
+ if(q==='levels'||q==='back-levels'){
+  show('modeChoices');hide('horrorChoices');hide('difficultyChoices');
+  document.getElementById('startSub').textContent='CHOOSE A LEVEL'; return true;
+ }
+ if(q==='back-modes'){
+  hide('modeChoices');show('horrorChoices');hide('difficultyChoices');
+  document.getElementById('startSub').textContent=gameMode==='pool'?'POOL ROOMS // CHOOSE MODE':'LEVEL 0 // CHOOSE MODE'; return true;
+ }
+ if(q==='level0'||q==='pool'){
+  gameMode=q; originalMode=false;poolOriginalMode=false;robloxMode=false;
+  hide('modeChoices');show('horrorChoices');hide('difficultyChoices');
+  document.getElementById('startSub').textContent=(q==='pool'?'POOL ROOMS':'LEVEL 0')+' // CHOOSE MODE';
+  document.getElementById('originalModeBtn').style.display=q==='level0'?'block':'none';
+  document.getElementById('poolOriginalModeBtn').style.display=q==='pool'?'block':'none';
+  document.getElementById('robloxModeBtn').style.display=q==='level0'?'block':'none'; return true;
+ }
+ if(q==='level0-peaceful'||q==='level0-horror'||q==='pool-peaceful'||q==='pool-horror'){
+  gameMode=q.startsWith('pool-')?'pool':'level0'; playMode=q.endsWith('peaceful')?'peaceful':'horror';
+  hide('modeChoices');hide('horrorChoices');show('difficultyChoices');
+  document.getElementById('startSub').textContent=(gameMode==='pool'?'POOL ROOMS':'LEVEL 0')+' // '+(playMode==='peaceful'?'PEACEFUL':'HORROR')+' // CHOOSE DIFFICULTY';
+  document.getElementById('originalModeBtn').style.display='none';
+  document.getElementById('poolOriginalModeBtn').style.display='none';
+  document.getElementById('robloxModeBtn').style.display='none'; return true;
+ }
+ const m=q.match(/^(level0|pool)-(easy|medium|hard)$/);
+ if(m){
+  gameMode=m[1]; difficultySize={easy:21,medium:31,hard:41}[m[2]];
+  originalMode=false;poolOriginalMode=false;robloxMode=false;gameStarted=true;
+  document.getElementById('startScreen').style.display='none'; startGame(difficultySize); return true;
+ }
+ if(q==='level0-original'){gameMode='level0';originalMode=true;poolOriginalMode=false;robloxMode=false;gameStarted=true;document.getElementById('startScreen').style.display='none';startGame(75);return true;}
+ if(q==='level0-roblox'){gameMode='level0';originalMode=false;poolOriginalMode=false;robloxMode=true;gameStarted=true;document.getElementById('startScreen').style.display='none';startGame(75);return true;}
+ if(q==='pool-original'){gameMode='pool';originalMode=false;poolOriginalMode=true;robloxMode=false;gameStarted=true;document.getElementById('startScreen').style.display='none';startGame(75);return true;}
+ return false;
+}
 function applyTVMenuHash(){
  const h=(location.hash||'').toLowerCase().replace(/^#/,'');
  if(!h)return;
@@ -3430,6 +3472,7 @@ document.getElementById('retry').onclick=()=>{
  crouching=false;crouchHeld=false;crouchToggle=false;updateCrouchButton();
 };
 updateClueToggle();
+applyTVQuery();
 document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
 function setActiveButtons(selector,attr,value){
  document.querySelectorAll(selector).forEach(b=>b.classList.toggle('active',b.dataset[attr]===value));
