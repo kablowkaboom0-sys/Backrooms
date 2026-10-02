@@ -98,7 +98,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <button class="diff" data-size="21">EASY</button>
 <button class="diff" data-size="31">MEDIUM</button>
 <button class="diff" data-size="41">HARD</button>
-<button class="diff" id="originalModeBtn" data-original="1">ORIGINAL MODE</button>
+<button class="diff" id="originalModeBtn" data-original="1">LEVEL 0 ORIGINAL MODE</button>
+<button class="diff" id="poolOriginalModeBtn" data-pool-original="1">POOL ROOMS ORIGINAL MODE</button>
 <button id="backModes">BACK TO GAME MODE</button>
 </div>
 </div>
@@ -181,6 +182,12 @@ let entities=[];
 let difficultySize=41;
 let originalMode=false;
 let originalRoomZones=[];
+let poolOriginalMode=false;
+let poolOriginalDarkRooms=[];
+let poolOriginalHotCells=new Set();
+let poolOriginalExitCells=[];
+let poolOriginalHubCell=null;
+let poolOriginalSpawnPoints=[];
 let originalLadderPieces=[];
 let originalLadderPieceSpawns=[];
 let originalLadderCollected=0;
@@ -1005,6 +1012,81 @@ function poolWaterAt(x,y){
  const cx=Math.max(0,Math.min(MW-1,Math.floor(x))),cy=Math.max(0,Math.min(MH-1,Math.floor(y)));
  return poolWaterDepth[cy][cx]||0;
 }
+function makeOriginalPoolMap(){
+ const m=Array.from({length:MH},()=>Array(MW).fill(1));
+ poolRoomType=Array.from({length:MH},()=>Array(MW).fill(0));
+ poolFloorHeight=Array.from({length:MH},()=>Array(MW).fill(0));
+ poolWaterDepth=Array.from({length:MH},()=>Array(MW).fill(0));
+ poolOriginalDarkRooms=[];
+ poolOriginalHotCells=new Set();
+ poolOriginalExitCells=[];
+ poolOriginalHubCell=null;
+ poolOriginalSpawnPoints=[
+  {x:18,y:91},{x:42,y:91},{x:18,y:18},{x:124,y:104}
+ ];
+ const room=(x1,y1,x2,y2,type=1,water=.16)=>{
+  for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++){
+   if(x>0&&y>0&&x<MW-1&&y<MH-1){m[y][x]=0;poolRoomType[y][x]=type;poolWaterDepth[y][x]=water;}
+  }
+ };
+ const corridor=(x1,y1,x2,y2)=>{
+  const sx=Math.sign(x2-x1),sy=Math.sign(y2-y1);
+  let x=x1,y=y1;
+  while(x!==x2){for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++)if(m[y+oy]?.[x+ox]!==undefined){m[y+oy][x+ox]=0;poolWaterDepth[y+oy][x+ox]=.12;}x+=sx;}
+  while(y!==y2){for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++)if(m[y+oy]?.[x+ox]!==undefined){m[y+oy][x+ox]=0;poolWaterDepth[y+oy][x+ox]=.12;}y+=sy;}
+ };
+ // Main central pool, square entrance rooms, wavy route, sewer-dungeon,
+ // second wavy room and the exit room, based on the Level 37 map.
+ room(38,35,102,82,2,.20);
+ for(let x=42;x<=98;x+=8)for(let y=39;y<=78;y+=8){
+  if(x%16===10||y%16===7)continue;
+  for(let yy=y;yy<y+2;yy++)for(let xx=x;xx<x+2;xx++)m[yy][xx]=1;
+ }
+ room(8,80,30,103,1,.12);
+ room(8,8,28,25,1,.12);
+ room(112,8,139,27,1,.12);
+ room(108,88,129,106,1,.12);
+ room(118,46,138,60,3,.18);
+ room(112,62,132,78,1,.12);
+ room(126,80,144,95,1,.12);
+ corridor(30,91,38,70); corridor(102,58,118,53); corridor(102,70,112,70);
+ corridor(118,53,130,38); corridor(102,40,124,18); corridor(102,76,108,96);
+ corridor(129,88,129,104); corridor(38,48,28,17);
+ // Three dark-tiled rooms with infected water.
+ const dark=[[116,46,124,54],[130,12,138,20],[128,81,138,89]];
+ for(const d of dark){
+  room(...d,3,.55);
+  poolOriginalDarkRooms.push({x1:d[0],y1:d[1],x2:d[2],y2:d[3]});
+ }
+ // Hot-water spiral area: descending cells become lethal.
+ for(let y=61;y<=78;y++)for(let x=108;x<=116;x++){
+  if(m[y]?.[x]!==undefined){m[y][x]=0;poolOriginalHotCells.add(x+','+y);poolWaterDepth[y][x]=.75;}
+ }
+ for(let r=1;r<=6;r++)for(let a=0;a<Math.PI*1.7;a+=.18){
+  const x=Math.round(112+Math.cos(a)*r),y=Math.round(70+Math.sin(a)*r);
+  if(m[y]?.[x]!==undefined){m[y][x]=0;poolOriginalHotCells.add(x+','+y);poolWaterDepth[y][x]=.75;}
+ }
+ // Hub staircase / door at the top branch.
+ poolOriginalHubCell={x:124,y:18};
+ // Red-lit exit hallway.
+ for(let x=130;x<=145;x++){m[53][x]=0;poolWaterDepth[53][x]=.08;}
+ poolOriginalExitCells=[
+  {x:144,y:53,name:'LEVEL !',label:'RED EXIT'},
+  {x:124,y:17,name:'THE HUB',label:'HUB DOOR'}
+ ];
+ // Four canonical spawn locations; use one per run.
+ const sp=poolOriginalSpawnPoints[Math.floor(Math.random()*poolOriginalSpawnPoints.length)];
+ startCell={x:sp.x,y:sp.y};
+ m[startCell.y][startCell.x]=0;
+ return m;
+}
+function poolOriginalDarkAt(x,y){
+ return poolOriginalDarkRooms.some(r=>x>=r.x1&&x<=r.x2&&y>=r.y1&&y<=r.y2);
+}
+function updatePoolOriginalObjective(){
+ const el=document.getElementById('originalObjective');if(!el||!poolOriginalMode)return;
+ el.textContent='ORIGINAL POOL ROOMS • Follow the safe route to the red-lit hallway. Avoid dark-tiled infected rooms and boiling water. The large staircase leads to the Hub.';
+}
 function makePoolMap(){
  seed=193742;const m=Array.from({length:MH},()=>Array(MW).fill(1));
  poolRoomType=Array.from({length:MH},()=>Array(MW).fill(0));
@@ -1118,6 +1200,11 @@ function poolFloorTexture(x,y){
  ];
 }
 function findExit(){
+ if(poolOriginalMode){
+  exitCells=poolOriginalExitCells;
+  exitCell=exitCells[0]||{x:1,y:1};
+  return;
+ }
  if(originalMode){
   exitCell=exitCells[0];
   return;
@@ -1176,9 +1263,11 @@ function rebuildLevel0CeilingLights(){
 }
 function reset(){
  map=gameMode==="pool"?makePoolMap():(originalMode?makeOriginalMap():makeMap());findExit();
+ if(poolOriginalMode)updatePoolOriginalObjective();
  if(originalMode)updateOriginalObjective();
  rebuildLevel0CeilingLights();
  px=startCell.x+.5;py=startCell.y+.5;pa=0;pz=poolFloorAt(px,py);startTime=performance.now();
+ if(poolOriginalMode)updatePoolOriginalObjective();
  if(originalMode)updateOriginalObjective();
  playerStamina=STAMINA_MAX;lastStaminaUpdate=startTime;updateStaminaUI();
  cluesEnabled=false;cluePath=[];cluePathCellX=-1;cluePathCellY=-1;updateClueToggle();
@@ -1235,7 +1324,7 @@ function spawnEntities(){
  entities=[];
  // Original Mode currently has no entities. Keep the map completely empty
  // of enemies while its layout, routes, and spawn points are being built.
- if(originalMode)return;
+ if(originalMode||poolOriginalMode)return;
  if(playMode==="peaceful")return;
  const count=entityCountForSize(MW);
  // Build a pool of valid corridor cells away from the player's start.
@@ -1390,19 +1479,19 @@ function wall(x,y){
  return map[y][x]===1;
 }
 function startGame(size){
- MW=gameMode==="pool"?(size===21?90:size===31?110:130):(originalMode?152:size);
- MH=gameMode==="pool"?MW:(originalMode?127:size);
+ MW=poolOriginalMode?150:(gameMode==="pool"?(size===21?90:size===31?110:130):(originalMode?152:size));
+ MH=poolOriginalMode?120:(gameMode==="pool"?MW:(originalMode?127:size));
  difficultySize=size;
  startCell=gameMode==="pool"?{x:1,y:1}:{x:1,y:1};
  gameStarted=true;
  document.getElementById('startScreen').style.display='none';
  document.getElementById('objectivePanel').style.display='none';
  document.getElementById('devPanel').style.display='none';
- document.getElementById('objectiveBtn').style.display=originalMode?'block':'none';
+ document.getElementById('objectiveBtn').style.display=(originalMode||poolOriginalMode)?'block':'none';
  document.getElementById('interactBtn').style.display=originalMode?'block':'none';
  document.getElementById('crouchBtn').style.display=originalMode?'block':'none';
- document.getElementById('originalObjective').style.display=originalMode?'block':'none';
- document.getElementById('title').textContent=gameMode==="pool"?"BACKROOMS // POOL ROOMS":(originalMode?"BACKROOMS // LEVEL 0 // ORIGINAL":"BACKROOMS // LEVEL 0");
+ document.getElementById('originalObjective').style.display=(originalMode||poolOriginalMode)?'block':'none';
+ document.getElementById('title').textContent=poolOriginalMode?"BACKROOMS // POOL ROOMS // ORIGINAL":gameMode==="pool"?"BACKROOMS // POOL ROOMS":(originalMode?"BACKROOMS // LEVEL 0 // ORIGINAL":"BACKROOMS // LEVEL 0");
  reset();
 }
 function atExitWallCell(x,y){return originalMode&&exitCells.some(e=>x===e.x&&y===e.y)}
@@ -1450,6 +1539,16 @@ function move(dt){
  if(!wall(Math.floor(px),Math.floor(py+dy+r*Math.sign(dy))))ny+=dy;
  px=nx;py=ny;
  if(gameMode==="pool"){const targetFloor=poolFloorAt(px,py);pz=0}
+ if(poolOriginalMode){
+  const cx=Math.floor(px),cy=Math.floor(py);
+  if(poolOriginalHotCells.has(cx+','+cy)){playerHealth=0;finish();return;}
+  if(poolOriginalDarkAt(cx,cy)){
+   playerHealth=Math.max(0,playerHealth-0.7);
+   updateHealthUI();
+   if(playerHealth<=0){finish();return;}
+  }
+  if(cx===144&&cy===53){finish();return;}
+ }
  // Ladder pieces are picked up by walking into them. F/INTERACT still works,
  // but contact pickup means the player does not need to stop on an exact pixel.
  if(originalMode&&originalLadderPieces.length){
@@ -2216,9 +2315,11 @@ document.getElementById('backLevelsFromModes').onclick=()=>{
 };
 document.querySelectorAll('#modeChoices .mode').forEach(btn=>btn.onclick=()=>{
  gameMode=btn.dataset.mode;
- originalMode=false;
+ originalMode=false;poolOriginalMode=false;
  const originalBtn=document.getElementById('originalModeBtn');
  if(originalBtn)originalBtn.style.display=gameMode==="level0"?'block':'none';
+ const poolOriginalBtn=document.getElementById('poolOriginalModeBtn');
+ if(poolOriginalBtn)poolOriginalBtn.style.display=gameMode==="pool"?'block':'none';
  document.getElementById('modeChoices').style.display='none';
  document.getElementById('horrorChoices').style.display='flex';
  document.getElementById('startSub').textContent=gameMode==="pool"?'POOL ROOMS // CHOOSE MODE':'LEVEL 0 // CHOOSE MODE';
@@ -2386,8 +2487,11 @@ document.querySelector('#aspectButtons button[data-aspect="native"]').classList.
 
 let last=performance.now(),acc=0;
 document.querySelectorAll('.diff').forEach(btn=>btn.onclick=()=>{
- if(btn.dataset.original){
-  originalMode=true;
+ if(btn.dataset.poolOriginal){
+  originalMode=false;poolOriginalMode=true;
+  startGame(75);
+ }else if(btn.dataset.original){
+  poolOriginalMode=false;originalMode=true;
   startGame(75);
  }else{
   originalMode=false;
