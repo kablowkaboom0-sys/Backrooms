@@ -221,6 +221,8 @@ let gameMode="level0";
 let playMode="horror";
 let startCell={x:1,y:1};
 let pz=0;
+let cameraBobPhase=0;
+let cameraBobAmount=0;
 let poolRoomType=[];
 let poolFloorHeight=[];
 let poolWaterDepth=[];
@@ -2099,6 +2101,11 @@ function move(dt){
   if(keys.e||keys.arrowright)pa+=dt*1.8;
  }
  const fMoving=Math.abs(f)>0||Math.abs(s)>0;
+ // Doom-style walking bob: stronger while moving/sprinting, smoothly settles
+ // when the player stops. Crouching gets a smaller bob.
+ const bobTarget=fMoving?(crouching?.55:(sprinting?1.15:.85)):0;
+ cameraBobAmount+=(bobTarget-cameraBobAmount)*Math.min(1,dt*10);
+ if(fMoving&&!paused&&!finished)cameraBobPhase+=dt*(sprinting?12:9);
  const sprinting=!crouching&&keys.shift&&fMoving&&playerStamina>0.001;
  const exhaustedBase=playerStamina<=LOW_STAMINA_THRESHOLD;
  const baseSpeed=exhaustedBase?BASE_SPEED*.8:BASE_SPEED;
@@ -2561,7 +2568,8 @@ function render(){
  ctx.fillRect(0,0,canvas.width,canvas.height);
  if(!gameStarted||!map)return;
 
- const hz=H*.51;
+ const walkBob=Math.sin(cameraBobPhase)*cameraBobAmount;
+ const hz=H*.51+walkBob;
 
  // World-space ceiling/floor.
  // The ceiling tiles are projected from the actual room coordinates, so they
