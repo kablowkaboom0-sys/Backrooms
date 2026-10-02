@@ -2088,7 +2088,7 @@ function atExit(x,y){
   // when the player reaches the walkable space immediately in front of it.
   // This avoids requiring the player to clip through the exit wall.
   if(name==='NORMAL EXIT'){
-   return originalLadderClimbed&&originalHasKey&&originalDoorOpen&&originalPitCrossed&&!originalLowerRoute;
+   return originalDoorOpen&&!originalLowerRoute&&(originalPitCrossed||(x>=149&&y>=54&&y<=66));
   }
   if(name==='ALTERNATE EXIT')return originalLowerRoute;
  }
