@@ -1007,8 +1007,7 @@ function drawCeilingLightsSafe(){
 const level0EntitySource=new Image();
 const level0EntityCanvas=document.createElement('canvas');
 let level0EntityReady=false;
-// Exact user-provided simplified entity silhouette, with only the white background removed.
-// The black figure itself is always fully opaque.
+// Simplified Level 0 entity based directly on the user-provided image.
 level0EntitySource.onload=()=>{
  level0EntityCanvas.width=level0EntitySource.naturalWidth;
  level0EntityCanvas.height=level0EntitySource.naturalHeight;
@@ -1017,18 +1016,17 @@ level0EntitySource.onload=()=>{
  cg.drawImage(level0EntitySource,0,0);
  level0EntityReady=true;
 };
-level0EntitySource.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIQAAAABCAYAAABeVwH4AAAAAklEQVR4AewaftIAAAANSURBVGP4z8DwnwEIAAAFAgEAffQh0QAAAABJRU5ErkJggg==';
+level0EntitySource.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIQAAAEECAYAAADpg5zLAAACg0lEQVR42u3dQY6DMAxA0fGI+1/ZXXVZBZGmduC97SwGoS9XpCSNzPyDt3+3AEEgCASBIJh1dL2wiCh9/MnMMCHwkeEWIAgEgSAQBILgu4/7q77trF5H6K7rOocJgSAQBIJAEAgCQbDQ4RbUGK3TVK1TmBAIAkEgCASBIBAEgkAQCAJBIAgEgSAQBIJAEAgCQSAIEASCQBCctmxfxmhfgfMjTAgEgSAQBIJAEAiCxyk7H8I6hQmBIBAEgkAQCAJB8DjOqSzi9zLwkYEgEASCQBAIgge6/Lud3lfo7eo6hwmBIBAEgkAQCAJBsFDZ+RCzrIOYEAgCQSAIBIEgEATb2XZfRvfzJXZdhzEhEASCQBAIAkEgCBa67fkQs+sAo+f8ruc7mBAIAkEgCASBIBAEgkAQCAJBIAgEgSAQBAgCQSAIBIEgEASCQBAIAkEgCASBIBAEgkAQCAJBIAgEAYJAEAgCQSAIBIEgEASCQBAIAkEgCASBIBAEgkAQCAJBgCAQBIJAEAgCQSAIBMFPHbteeETkzv8/M8OEwEcGgkAQCAJBIAgepu06xO7P+aPrH/296vpNCASBIBAEgkAQCIKFtn0fouv7BGevr/p9DhMCQSAIBIEgEASCQBAIAkEgCASBIBAEguDGPr4PMft9fdd9B7uouv8mBIJAEAgCQSAIBMFCl/dl7Lrv4C5W3X8TAkEgCASBIBAEgkAQCAJBIAgEgSAQBIJAEAgCQSAIBAGCQBAIgtM+7suYPb/B+Q9zqu6/CYEgEASCQBAIAkEgCASBIBAEgkAQCAJBIAgEgSAQBIIAQSAIBIEgEASCQBAIAkEgCARBO5Hp5zUxIRAEgkAQCIIvegHx828PMQaUfgAAAABJRU5ErkJggg==';
 
 function drawLevel0Entity(center,top,h,unit,phase){
  if(!level0EntityReady)return 0;
  const drawH=Math.max(4,Math.min(H*.92,h));
  const drawW=drawH*(level0EntityCanvas.width/Math.max(1,level0EntityCanvas.height));
- const drawTop=top;
  g.save();
  g.globalAlpha=1;
  g.globalCompositeOperation='source-over';
  g.imageSmoothingEnabled=false;
- g.drawImage(level0EntityCanvas,center-drawW/2,drawTop,drawW,drawH);
+ g.drawImage(level0EntityCanvas,center-drawW/2,top,drawW,drawH);
  g.restore();
  return drawW;
 }
