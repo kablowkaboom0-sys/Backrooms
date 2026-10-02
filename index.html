@@ -2586,10 +2586,12 @@ function render(){
     // the same world space, while keeping fixtures centered in their cells.
     // Level 0 ceiling: doubled grid density.
     const tileSize=.5;
-    const tileX=Math.floor(wx/tileSize);
-    const tileY=Math.floor(wy/tileSize);
-    const localX=wx-tileX;
-    const localY=wy-tileY;
+    const tileWX=wx/tileSize;
+    const tileWY=wy/tileSize;
+    const tileX=Math.floor(tileWX);
+    const tileY=Math.floor(tileWY);
+    const localX=tileWX-tileX;
+    const localY=tileWY-tileY;
 
     // Keep the finer Level 0 ceiling grid visible at every distance.
     const seamX=localX<.045||localX>.955;
