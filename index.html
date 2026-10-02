@@ -3036,13 +3036,16 @@ function handleTVMenuKey(e){
  // BrowseHere / Android TV may expose the remote as Android DPAD key codes
  // instead of the usual browser Arrow/Enter key names.
  const code=e.keyCode||e.which||0;
- const up=e.key==='ArrowUp'||code===38||code===19;
- const down=e.key==='ArrowDown'||code===40||code===20;
- const left=e.key==='ArrowLeft'||code===37||code===21;
- const right=e.key==='ArrowRight'||code===39||code===22;
- const select=e.key==='Enter'||e.key===' '||e.key==='Spacebar'||
-   e.key==='NumpadEnter'||e.key==='Select'||e.key==='Accept'||e.key==='OK'||
-   e.code==='NumpadEnter'||code===13||code===23||code===66;
+ const key=e.key||'';
+ const eventCode=e.code||'';
+ const up=key==='ArrowUp'||eventCode==='ArrowUp'||code===38||code===19;
+ const down=key==='ArrowDown'||eventCode==='ArrowDown'||code===40||code===20;
+ const left=key==='ArrowLeft'||eventCode==='ArrowLeft'||code===37||code===21;
+ const right=key==='ArrowRight'||eventCode==='ArrowRight'||code===39||code===22;
+ const select=key==='Enter'||key===' '||key==='Spacebar'||
+   key==='NumpadEnter'||key==='Select'||key==='Accept'||key==='OK'||
+   eventCode==='Enter'||eventCode==='NumpadEnter'||eventCode==='Select'||
+   code===13||code===23||code===66;
 
  if(up||left){
   tvMenuIndex=(tvMenuIndex-1+items.length)%items.length;
@@ -3063,8 +3066,24 @@ document.addEventListener('keydown',handleTVMenuKey,true);
 document.addEventListener('keypress',e=>{
  if(document.getElementById('startScreen').style.display==='none')return;
  const code=e.keyCode||e.which||0;
- if([13,23,66,37,38,39,40,19,20,21,22].includes(code)){
+ const eventCode=e.code||'';
+ if([13,23,66,37,38,39,40,19,20,21,22].includes(code) ||
+    ['Enter','NumpadEnter','Select','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(eventCode)){
   handleTVMenuKey(e);
+ }
+},true);
+
+// A few Android TV WebViews report navigation keys on keyup only.
+// Treat those as menu commands too, but only while the start screen is active.
+document.addEventListener('keyup',e=>{
+ if(document.getElementById('startScreen').style.display==='none')return;
+ const code=e.keyCode||e.which||0;
+ const eventCode=e.code||'';
+ if([13,23,66,37,38,39,40,19,20,21,22].includes(code) ||
+    ['Enter','NumpadEnter','Select','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(eventCode)){
+  handleTVMenuKey(e);
+  e.preventDefault();
+  e.stopPropagation();
  }
 },true);
 
