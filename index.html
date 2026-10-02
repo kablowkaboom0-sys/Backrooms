@@ -98,7 +98,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v23</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v24</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div><div id="balanceUI"><div class="balanceLabel">BALANCE</div><div class="balanceBar"><div id="balanceFill"></div></div><div id="balanceText">CENTER</div></div><div id="originalObjective"></div>
 <button id="objectiveBtn">OBJECTIVE</button><button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -184,6 +184,7 @@ let originalInteractQueued=false;
 let originalPitCrossed=false;
 let originalBalance=0;
 let originalLeanInput=0;
+let crouching=false;
 let originalHasKey=false;
 let originalDoorCell=null;
 let originalDoorOpen=false;
@@ -355,7 +356,7 @@ function setupOriginalMechanics(m){
  originalRoomZones=[
   {name:'PILLAR ROOM',x1:108,y1:42,x2:140,y2:67},
   {name:'LADDER ROOM',x1:62,y1:4,x2:108,y2:44},
-  {name:'PITFALLS',x1:68,y1:60,x2:125,y2:94},
+  {name:'PITFALLS',x1:58,y1:54,x2:151,y2:92},
   {name:'LOWER LEVEL',x1:105,y1:88,x2:151,y2:126},
   {name:'MANILA ROOM',x1:137,y1:101,x2:151,y2:116},
   {name:'LEVEL 0.2 AREA',x1:142,y1:113,x2:151,y2:126}
@@ -443,7 +444,7 @@ function setupOriginalMechanics(m){
  // The pitfall floor is represented as a third collision state: 2 = hole.
  // These are the checkerboard holes in the supplied Level 0 map.
  const pitCenters=[];
- for(let y of [64,70,76,82,88])for(let x of [73,80,88,95,103,111,118]){
+ for(let y of [58,65,72,79,86])for(let x of [61,70,79,88,97,106,115,124,133,142]){
   if(m[y]?.[x]===1)pitCenters.push({x,y});
  }
  for(const p of pitCenters){
@@ -800,7 +801,7 @@ function reset(){
  updateHealthUI();
  document.getElementById('panel').style.display='none';clearKeys();
 }
-function clearKeys(){for(const k in keys)keys[k]=false;originalLeanInput=0;originalInteractQueued=false}
+function clearKeys(){for(const k in keys)keys[k]=false;originalLeanInput=0;originalInteractQueued=false;crouching=false}
 function drawDevMap(){
  const mc=document.getElementById('mapCanvas'),mctx=mc.getContext('2d');
  const cs=mc.width/MW;
@@ -1041,12 +1042,23 @@ function move(dt){
  const sprinting=keys.shift&&fMoving&&playerStamina>0.001;
  const exhaustedBase=playerStamina<=LOW_STAMINA_THRESHOLD;
  const baseSpeed=exhaustedBase?BASE_SPEED*.8:BASE_SPEED;
- const sp=baseSpeed*(sprinting?SPRINT_MULTIPLIER:1),ca=Math.cos(pa),sa=Math.sin(pa);
+ const sp=baseSpeed*(crouching?.58:1)*(sprinting?SPRINT_MULTIPLIER:1),ca=Math.cos(pa),sa=Math.sin(pa);
  const dx=(ca*f-sa*s)*sp*dt,dy=(sa*f+ca*s)*sp*dt,r=.2;
  if(!wall(Math.floor(px+dx+r*Math.sign(dx)),Math.floor(py)))px+=dx;
  if(!wall(Math.floor(px),Math.floor(py+dy+r*Math.sign(dy))))py+=dy;
  if(gameMode==="pool"){const targetFloor=poolFloorAt(px,py);pz=0}
- if(atExit(Math.floor(px),Math.floor(py)))finish();
+ crouching=!!keys.control;
+ if(originalMode&&crouching){
+  for(let i=0;i<exitEntryCells.length;i++){
+   const e=exitEntryCells[i],name=exitCells[i]?.name||'';
+   const near=Math.hypot(px-(e[0]+.5),py-(e[1]+.5))<1.45;
+   if(!near)continue;
+   const ready=name==='NORMAL EXIT'
+    ?(originalLadderClimbed&&originalHasKey&&originalDoorOpen&&originalPitCrossed&&!originalLowerRoute)
+    :(name==='ALTERNATE EXIT'&&originalLowerRoute);
+   if(ready){finish();break;}
+  }
+ }else if(atExit(Math.floor(px),Math.floor(py)))finish();
 }
 function finish(){
  finished=true;
@@ -1553,7 +1565,7 @@ function render(){
    // approximation caused distant ceiling tiles to stretch because each screen
    // row was mapped to an arbitrary world distance.
    const focal=H/.92;
-   const cameraZ=.46;
+   const cameraZ=crouching?.26:.46;
    const ceilingZ=.92;
    const ceilingDepth=Math.min(RENDER_DISTANCE,(ceilingZ-cameraZ)*focal/Math.max(1,hz-y));
    for(let x=0;x<W;x++){
@@ -1741,12 +1753,13 @@ function render(){
 addEventListener('keydown',e=>{
  const k=e.key.toLowerCase();
  if(k==='f'&&originalMode){queueOriginalInteract();e.preventDefault();return}
+ if(k==='control'){keys.control=true;e.preventDefault();return}
  if(k==='escape'||k==='p'){togglePause();return}
  if(k==='m'){const panel=document.getElementById('mapPanel');if(panel.style.display==='flex')closeMap();else openMap();return}
  keys[k]=true;
  if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();
 });
-addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;if(e.key.toLowerCase()==='control')crouching=false});
 
 let drag=false,lastX=0;
 canvas.onpointerdown=e=>{if(paused||finished)return;drag=true;lastX=e.clientX;canvas.setPointerCapture(e.pointerId)};
@@ -1772,8 +1785,8 @@ run.onpointerdown=e=>{e.preventDefault();keys.shift=true};run.onpointerup=run.on
 const interactBtn=document.getElementById('interactBtn');
 interactBtn.onpointerdown=e=>{e.preventDefault();queueOriginalInteract()};
 const crouchBtn=document.getElementById('crouchBtn');
-crouchBtn.onpointerdown=e=>{e.preventDefault();keys.control=true};
-crouchBtn.onpointerup=crouchBtn.onpointercancel=()=>keys.control=false;
+crouchBtn.onpointerdown=e=>{e.preventDefault();keys.control=true;crouching=true};
+crouchBtn.onpointerup=crouchBtn.onpointercancel=()=>{keys.control=false;crouching=false};
 
 function updateClueToggle(){
  const b=document.getElementById('clueToggle');
