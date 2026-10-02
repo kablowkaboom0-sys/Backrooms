@@ -1219,8 +1219,11 @@ function entityCountForSize(size){
 }
 function spawnEntities(){
  entities=[];
+ // Original Mode currently has no entities. Keep the map completely empty
+ // of enemies while its layout, routes, and spawn points are being built.
+ if(originalMode)return;
  if(playMode==="peaceful")return;
- const count=originalMode?1:entityCountForSize(MW);
+ const count=entityCountForSize(MW);
  // Build a pool of valid corridor cells away from the player's start.
  const candidates=[];
  for(let y=1;y<MH-1;y++)for(let x=1;x<MW-1;x++){
