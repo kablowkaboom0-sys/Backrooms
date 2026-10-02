@@ -187,6 +187,8 @@ let originalLadderFixed=false;
 let originalLadderClimbed=false;
 let originalLadderCell=null;
 let originalKeyCell=null;
+let originalLadderLeanX=0;
+let originalLadderLeanY=-1;
 let originalInteractQueued=false;
 let originalPitCrossed=false;
 let originalBalance=0;
@@ -509,7 +511,18 @@ function setupOriginalMechanics(m){
  // Keep the lower exit's approach open.
  m[125][76]=0;
  originalLadderCell=nearestWalkable(84,24,14)||nearestWalkable(84,18,14);
- originalKeyCell=nearestWalkable(84,18,10)||originalLadderCell;
+ // Pick a real adjacent wall so the broken ladder visibly leans against it.
+ originalLadderLeanX=0;originalLadderLeanY=-1;
+ if(originalLadderCell){
+  const dirs=[[0,-1],[1,0],[0,1],[-1,0]];
+  const wallDir=dirs.find(([dx,dy])=>{
+   const x=originalLadderCell.x+dx,y=originalLadderCell.y+dy;
+   return x>=0&&y>=0&&x<MW&&y<MH&&m[y]?.[x]===1;
+  });
+  if(wallDir){originalLadderLeanX=wallDir[0];originalLadderLeanY=wallDir[1];}
+ }
+ // The key belongs on top of the ladder, not on the floor elsewhere.
+ originalKeyCell=originalLadderCell;
 }
 let exitEntryCells=[];
 
@@ -560,13 +573,13 @@ function updateOriginalObjective(){
   currentText='Find the broken ladder room and collect the remaining ladder pieces ('+originalLadderCollected+'/4).';
  }else if(!originalLadderFixed){
   text+='4/4 PIECES • REPAIR LADDER';
-  currentText='Return to the broken ladder and press F / INTERACT to repair it.';
+  currentText='Return to the broken ladder and press F / INTERACT to attach all 4 pieces.';
  }else if(!originalLadderClimbed){
   text+='LADDER REPAIRED • CLIMB';
-  currentText='Press F / INTERACT at the repaired ladder to climb it and take the key.';
+  currentText='Press F / INTERACT at the repaired ladder to take the key from the top.';
  }else if(!originalHasKey){
   text+='CLIMBED • GET THE KEY';
-  currentText='Take the key from the top of the ladder.';
+  currentText='Press F / INTERACT at the ladder to take the key.';
  }else if(!originalDoorOpen){
   text='KEY FOUND • UNLOCK THE DOOR';
   currentText='Find the wooden door and press F / INTERACT to unlock it.';
@@ -635,6 +648,8 @@ function originalInteract(){
  const use=originalInteractQueued;
  originalInteractQueued=false;
  if(!use)return;
+
+ // Pick up loose ladder pieces first.
  for(let i=originalLadderPieces.length-1;i>=0;i--){
   const p=originalLadderPieces[i];
   if(Math.hypot(px-(p.x+.5),py-(p.y+.5))<.9){
@@ -644,22 +659,29 @@ function originalInteract(){
    return;
   }
  }
- if(originalLadderCollected>=4&&!originalLadderFixed&&originalLadderCell&&Math.hypot(px-(originalLadderCell.x+.5),py-(originalLadderCell.y+.5))<1.25){
-  originalLadderFixed=true;
-  updateOriginalObjective();
-  return;
+
+ if(originalLadderCell){
+  const d=Math.hypot(px-(originalLadderCell.x+.5),py-(originalLadderCell.y+.5));
+  if(d<1.45){
+   // Once all four pieces are collected, one interaction attaches them to
+   // the broken ladder. There is no separate climb state.
+   if(originalLadderCollected>=4&&!originalLadderFixed){
+    originalLadderFixed=true;
+    originalLadderClimbed=true;
+    originalKeyCell=originalLadderCell;
+    updateOriginalObjective();
+    return;
+   }
+
+   // The key is sitting on top of the repaired ladder.
+   if(originalLadderFixed&&!originalHasKey){
+    originalHasKey=true;
+    updateOriginalObjective();
+    return;
+   }
+  }
  }
- if(originalLadderFixed&&!originalLadderClimbed&&originalLadderCell&&Math.hypot(px-(originalLadderCell.x+.5),py-(originalLadderCell.y+.5))<1.25){
-  originalLadderClimbed=true;
-  originalKeyCell=nearestWalkable(84,18,12)||originalLadderCell;
-  updateOriginalObjective();
-  return;
- }
- if(originalLadderClimbed&&!originalHasKey&&originalKeyCell&&Math.hypot(px-(originalKeyCell.x+.5),py-(originalKeyCell.y+.5))<1.0){
-  originalHasKey=true;
-  updateOriginalObjective();
-  return;
- }
+
  if(originalHasKey&&!originalDoorOpen&&originalDoorCell){
   const d=Math.hypot(px-(originalDoorCell.x+.5),py-(originalDoorCell.y+.5));
   if(d<1.25){
@@ -685,35 +707,73 @@ function drawOriginalObjects(){
   return {center,dist};
  };
 
- // The broken ladder is a real visual landmark. Previously only the four
- // collectible pieces were drawn, so there was no obvious ladder to find.
+ // Broken ladder: fixed to the floor and leaning toward a nearby wall.
+ // It no longer behaves like a floating screen-space marker.
  const ladder=projectCell(originalLadderCell);
  if(ladder){
-  const h=Math.max(7,Math.min(30,H/ladder.dist*.82));
-  const w=Math.max(4,h*.38);
+  const h=Math.max(10,Math.min(34,H/ladder.dist*.9));
+  const w=Math.max(5,h*.34);
   const cx=ladder.center;
-  const bottom=H/2+h*.34;
+  const leanSign=(originalLadderLeanX!==0)
+    ? Math.sign(originalLadderLeanX)*w*.34
+    : 0;
+  const bottom=H/2+h*.38;
   const top=bottom-h;
+  const topX=cx+leanSign;
 
-  g.fillStyle='rgba(55,32,15,.96)';
-  g.fillRect(cx-w*.5,top,w*.16,h);
-  g.fillRect(cx+w*.34,top,w*.16,h);
+  g.save();
+  g.lineCap='square';
 
-  g.fillStyle='rgba(170,122,55,.98)';
-  const rungH=Math.max(1,h*.07);
-  for(let i=1;i<5;i++){
-   const y=top+h*(i/5);
-   g.fillRect(cx-w*.34,y,w*.68,rungH);
+  // Two wooden rails, visibly tilted toward the wall.
+  g.strokeStyle='rgba(62,37,18,.98)';
+  g.lineWidth=Math.max(2,w*.13);
+  g.beginPath();
+  g.moveTo(cx-w*.42,bottom);
+  g.lineTo(topX-w*.42,top);
+  g.moveTo(cx+w*.42,bottom);
+  g.lineTo(topX+w*.42,top);
+  g.stroke();
+
+  // Broken ladder has only a couple of remaining rungs.
+  const rungCount=originalLadderFixed?5:2;
+  g.strokeStyle='rgba(174,125,57,.98)';
+  g.lineWidth=Math.max(1.5,w*.10);
+  for(let i=1;i<=rungCount;i++){
+   const t=i/(rungCount+1);
+   const y=bottom-(bottom-top)*t;
+   const x=cx+(topX-cx)*t;
+   const rw=w*.72;
+   g.beginPath();
+   g.moveTo(x-rw*.5,y);
+   g.lineTo(x+rw*.5,y);
+   g.stroke();
   }
 
-  // Small label makes the objective landmark easy to spot without
-  // changing the normal world geometry.
+  // The repaired pieces visibly fill the missing ladder section.
+  if(originalLadderFixed){
+   g.fillStyle='rgba(210,157,73,.9)';
+   const repairedY=top+h*.18;
+   g.fillRect(topX-w*.46,repairedY,w*.92,Math.max(2,h*.07));
+  }
+
+  // Key resting on top of the repaired ladder.
+  if(originalLadderFixed&&!originalHasKey){
+   const keySize=Math.max(3,h*.13);
+   g.fillStyle='#eee2a5';
+   g.beginPath();
+   g.arc(topX,top+keySize*.7,keySize*.42,0,Math.PI*2);
+   g.fill();
+   g.fillRect(topX,top+keySize*.65,keySize*1.45,Math.max(1,keySize*.22));
+   g.fillRect(topX+keySize,top+keySize*.65,keySize*.22,keySize*.45);
+  }
+
   if(ladder.dist<8){
    g.font='6px monospace';
    g.textAlign='center';
    g.fillStyle='rgba(255,235,150,.9)';
-   g.fillText('LADDER',cx,Math.max(6,top-3));
+   g.fillText(originalLadderFixed?(originalHasKey?'LADDER':'KEY'):'BROKEN LADDER',topX,Math.max(6,top-5));
   }
+  g.restore();
  }
 
  const drawMarker=(cell,kind)=>{
@@ -723,14 +783,12 @@ function drawOriginalObjects(){
   const w=Math.max(2,h*.42);
   const top=H/2-h*.55;
   if(kind==='piece')g.fillStyle='#d8b84c';
-  else if(kind==='key')g.fillStyle='#ddd8c2';
   else return;
   g.fillRect(p.center-w/2,top,w,h);
   g.fillStyle='rgba(255,255,255,.35)';
   g.fillRect(p.center-w/4,top,w*.18,h);
  };
  for(const p of originalLadderPieces)drawMarker(p,'piece');
- if(originalLadderCollected>=4&&!originalHasKey)drawMarker(originalKeyCell,'key');
 }
 function poolCellType(x,y){
  if(gameMode!=="pool"||!poolRoomType[y]||poolRoomType[y][x]===undefined)return 0;
