@@ -795,42 +795,39 @@ function rebuildLevel0CeilingLights(){
  ceilingLights=[];
  if(gameMode!=="level0"||!map)return;
 
- // Level 0 reference-style ceiling:
- // small square ceiling tiles form a continuous grid, while long
- // rectangular fluorescent fixtures appear only every few tiles.
+ // Keep every Level 0 mode on one consistent world-space drop-ceiling grid.
+ // Fixtures are centered inside 3x3 groups of ceiling panels, matching the
+ // repeating fluorescent-light rhythm of classic Level 0.
  const occupied=new Set();
  const key=(x,y)=>x+','+y;
  const add=(x,y)=>{
-  if(x<0||y<0||x>=MW||y>=MH||map[y]?.[x]!==0)return;
+  if(x<1||y<1||x>=MW-1||y>=MH-1||map[y]?.[x]!==0)return;
   const k=key(x,y);
   if(occupied.has(k))return;
   occupied.add(k);
   ceilingLights.push({x:x+.5,y:y+.5});
  };
 
- // Put one fixture at the CENTER of selected 3x3 ceiling-tile groups.
- // This gives the regular rhythm seen in the reference image without
- // covering the whole ceiling in bright squares.
- for(let y=0;y<MH;y+=3){
-  for(let x=0;x<MW;x+=3){
+ for(let y=1;y<MH-1;y+=3){
+  for(let x=1;x<MW-1;x+=3){
    const cx=x+1,cy=y+1;
    if(cx>=MW-1||cy>=MH-1||map[cy]?.[cx]!==0)continue;
    let open=0;
    for(let oy=0;oy<3;oy++)for(let ox=0;ox<3;ox++){
     if(map[y+oy]?.[x+ox]===0)open++;
    }
-   if(open>=6)add(cx,cy);
+   if(open>=7)add(cx,cy);
   }
  }
 
- // On long corridors, keep the same 3-tile spacing and place a centered
- // fixture where the first pass was blocked by a wall.
- for(let y=1;y<MH-1;y++){
-  for(let x=1;x<MW-1;x++){
-   if(map[y]?.[x]!==0||occupied.has(key(x,y)))continue;
+ // Preserve straight rows through long corridors when a full 3x3 block
+ // cannot fit because a wall interrupts the surrounding panels.
+ for(let y=2;y<MH-2;y++){
+  for(let x=2;x<MW-2;x++){
+   if(x%3!==2||y%3!==2||map[y]?.[x]!==0||occupied.has(key(x,y)))continue;
    const lr=map[y][x-1]===0&&map[y][x+1]===0;
    const ud=map[y-1][x]===0&&map[y+1][x]===0;
-   if((lr||ud)&&x%3===1&&y%3===1)add(x,y);
+   if(lr||ud)add(x,y);
   }
  }
 }
@@ -1247,9 +1244,15 @@ function carpetTexture(x,y){
  ];
 }
 function ceilingTexture(x,y){
+ // Warm, aged mineral-fiber ceiling tiles: brighter and less yellow than
+ // the wallpaper and carpet, as in the classic Level 0 look.
  const n=texNoise(x,y);
- const tile=((Math.floor(x*3)+Math.floor(y*3))&1)?3:-3;
- return [Math.max(0,178+n*18+tile),Math.max(0,151+n*16+tile),Math.max(0,76+n*10+tile)];
+ const tile=((Math.floor(x/1.27)+Math.floor(y/1.14))&1)?2:-2;
+ return [
+  Math.max(0,198+n*8+tile),
+  Math.max(0,196+n*8+tile),
+  Math.max(0,181+n*7+tile)
+ ];
 }
 function setPix(i,r,g,b){
  r=Number.isFinite(r)?r:60;g=Number.isFinite(g)?g:45;b=Number.isFinite(b)?b:25;
@@ -1388,8 +1391,8 @@ function drawCeilingLightsSafe(){
  if(gameMode==="pool"||!ceilingLights.length)return;
  const hz=H*.51;
  const tanHalf=Math.tan(currentFOV/2);
- const halfW=.46;   // long side of the fluorescent fixture
- const halfD=.16;   // short side
+ const halfW=.43;   // long side of the fluorescent fixture
+ const halfD=.18;   // short side
  const panelZ=.94;
 
  function project(wx,wy){
@@ -1623,21 +1626,24 @@ function render(){
     const wx=px+Math.cos(ra)*ceilingDepth;
     const wy=py+Math.sin(ra)*ceilingDepth;
 
-    // Larger acoustic ceiling panels, closer to a real Level 0 ceiling.
-    // Panels are 2x2 world units, with seams aligned to world space.
-    const tileSize=1;
-    const tileX=Math.floor(wx/tileSize);
-    const tileY=Math.floor(wy/tileSize);
-    const localX=(wx/tileSize)-tileX;
-    const localY=(wy/tileSize)-tileY;
-    const seam=(localX<.028||localY<.028)?-24:0;
-    const tileNoise=hash(tileX*31,tileY*47)*4-2;
+    // Suspended mineral-fiber panels are slightly rectangular, with
+    // thin dark seams that form a continuous drop-ceiling grid.
+    const tileW=1.27;
+    const tileD=1.14;
+    const tileX=Math.floor(wx/tileW);
+    const tileY=Math.floor(wy/tileD);
+    const localX=(wx/tileW)-tileX;
+    const localY=(wy/tileD)-tileY;
+    const seamX=localX<.035||localX>.965;
+    const seamY=localY<.035||localY>.965;
+    const seam=(seamX||seamY)?-22:0;
+    const tileNoise=hash(tileX*31,tileY*47)*5-2.5;
     const light=fade*fog;
 
     setPix((y*W+x)*4,
-      (202+tileNoise+seam)*light,
-      (198+tileNoise+seam*.82)*light,
-      (169+tileNoise+seam*.55)*light);
+      (205+tileNoise+seam)*light,
+      (202+tileNoise+seam*.82)*light,
+      (188+tileNoise+seam*.55)*light);
    }
   }else{
    // Pool Rooms has no Level 0 carpet fallback.
