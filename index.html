@@ -2656,6 +2656,7 @@ function render(){
 
     // Denser acoustic ceiling panels: twice as many grid cells across
     // the same world space, while keeping fixtures centered in their cells.
+    // Level 0 ceiling: doubled grid density.
     const tileSize=.5;
     const tileX=Math.floor(wx/tileSize);
     const tileY=Math.floor(wy/tileSize);
@@ -2733,7 +2734,8 @@ function render(){
     if(floorDepth>RENDER_DISTANCE)continue;
     const wx=px+floorCos*floorDepth;
     const wy=py+floorSin*floorDepth;
-    let ct=gameMode==="pool"?poolFloorTexture(wx,wy):carpetTexture(wx,wy);
+    // Pool Rooms use a denser floor grid; Level 0 keeps its normal carpet texture.
+    let ct=gameMode==="pool"?poolFloorTexture(wx*2,wy*2):carpetTexture(wx,wy);
     if(originalMode){
      const cx=Math.floor(wx),cy=Math.floor(wy);
      if(originalPitAt(cx,cy)){
