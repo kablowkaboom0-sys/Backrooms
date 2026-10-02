@@ -799,7 +799,7 @@ function reset(){
  updateHealthUI();
  document.getElementById('panel').style.display='none';clearKeys();
 }
-function clearKeys(){for(const k in keys)keys[k]=false}
+function clearKeys(){for(const k in keys)keys[k]=false;originalLeanInput=0;originalInteractQueued=false}
 function drawDevMap(){
  const mc=document.getElementById('mapCanvas'),mctx=mc.getContext('2d');
  const cs=mc.width/MW;
@@ -1003,6 +1003,7 @@ function startGame(size){
  document.getElementById('startScreen').style.display='none';
  document.getElementById('objectivePanel').style.display='none';
  document.getElementById('objectiveBtn').style.display=originalMode?'block':'none';
+ document.getElementById('interactBtn').style.display=originalMode?'block':'none';
  document.getElementById('originalObjective').style.display=originalMode?'block':'none';
  document.getElementById('title').textContent=gameMode==="pool"?"BACKROOMS // POOL ROOMS":(originalMode?"BACKROOMS // LEVEL 0 // ORIGINAL":"BACKROOMS // LEVEL 0");
  reset();
@@ -1010,8 +1011,15 @@ function startGame(size){
 function atExitWallCell(x,y){return originalMode&&exitCells.some(e=>x===e.x&&y===e.y)}
 function atExit(x,y){
  if(!exitCells.length)return false;
- if(originalMode)return exitEntryCells.some(e=>x===e[0]&&y===e[1]);
- return exitCells.some(e=>x===e.x&&y===e.y);
+ if(!originalMode)return exitCells.some(e=>x===e.x&&y===e.y);
+ for(let i=0;i<exitEntryCells.length;i++){
+  const e=exitEntryCells[i];
+  if(x!==e[0]||y!==e[1])continue;
+  const name=exitCells[i]?.name||'';
+  if(name==='NORMAL EXIT')return originalLadderClimbed&&originalHasKey&&originalDoorOpen&&originalPitCrossed&&!originalLowerRoute;
+  if(name==='ALTERNATE EXIT')return originalLowerRoute;
+ }
+ return false;
 }
 function move(dt){
  // Physical gamepad sticks mirror the two mobile joysticks.
@@ -1020,7 +1028,7 @@ function move(dt){
   keys.a=gx<-.18;keys.d=gx>.18;
   keys.w=gy<-.18;keys.s=gy>.18;
  }
- if(Math.abs(gamepadLookX)>.01&&!paused&&!finished)pa+=gamepadLookX*.045;
+ if(Math.abs(gamepadLookX)>.01&&!paused&&!finished){if(originalPitActive())originalLeanInput=gamepadLookX;else pa+=gamepadLookX*.045;}
 
  if(paused||finished)return;
  let f=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0);
@@ -1180,7 +1188,12 @@ function setPix(i,r,g,b){
 
 function findCluePath(){
  const sx=Math.floor(px),sy=Math.floor(py);
- const target=originalMode&&exitEntryCells.length?exitEntryCells[0]:[exitCell.x,exitCell.y];
+ let target=[exitCell.x,exitCell.y];
+ if(originalMode&&exitEntryCells.length){
+  let idx=originalLowerRoute?exitCells.findIndex(e=>e.name==='ALTERNATE EXIT'):0;
+  if(idx<0)idx=0;
+  target=exitEntryCells[idx];
+ }
  const tx=target[0],ty=target[1];
  if(sx===tx&&sy===ty)return [];
  const seen=Array.from({length:MH},()=>Array(MW).fill(false));
@@ -1725,6 +1738,7 @@ function render(){
 
 addEventListener('keydown',e=>{
  const k=e.key.toLowerCase();
+ if(k==='f'&&originalMode){queueOriginalInteract();e.preventDefault();return}
  if(k==='escape'||k==='p'){togglePause();return}
  if(k==='m'){const panel=document.getElementById('mapPanel');if(panel.style.display==='flex')closeMap();else openMap();return}
  keys[k]=true;
@@ -1750,9 +1764,11 @@ function joystick(el,knob,callback){
 joystick(document.getElementById('moveStick'),document.querySelector('#moveStick .knob'),(x,y)=>{
  keys.w=y<-.18;keys.s=y>.18;keys.a=x<-.18;keys.d=x>.18;
 });
-joystick(document.getElementById('lookStick'),document.querySelector('#lookStick .knob'),(x)=>{if(!paused&&!finished)pa+=x*.035});
+joystick(document.getElementById('lookStick'),document.querySelector('#lookStick .knob'),(x)=>{if(paused||finished)return;if(originalPitActive())originalLeanInput=x;else pa+=x*.035});
 const run=document.getElementById('run');
 run.onpointerdown=e=>{e.preventDefault();keys.shift=true};run.onpointerup=run.onpointercancel=()=>keys.shift=false;
+const interactBtn=document.getElementById('interactBtn');
+interactBtn.onpointerdown=e=>{e.preventDefault();queueOriginalInteract()};
 
 function updateClueToggle(){
  const b=document.getElementById('clueToggle');
@@ -1827,6 +1843,8 @@ document.getElementById('retry').onclick=()=>{
  gameStarted=false;finished=false;clearKeys();
  document.getElementById('objectivePanel').style.display='none';
  document.getElementById('objectiveBtn').style.display='none';
+ document.getElementById('interactBtn').style.display='none';
+ document.getElementById('balanceUI').style.display='none';
 };
 updateClueToggle();
 document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
@@ -1868,6 +1886,7 @@ function loop(now){
    updateEntities(simNow,1/30);
    if(document.getElementById('mapPanel').style.display==='flex') drawDevMap();
    regenHealth(simNow);
+   updateOriginalPitBalance(simNow,1/30);
    originalInteract();
    updateStamina(simNow,1/30);
    render();
