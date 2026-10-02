@@ -98,7 +98,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v27</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v28</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div><div id="balanceUI"><div class="balanceLabel">BALANCE</div><div class="balanceBar"><div id="balanceFill"></div></div><div id="balanceText">CENTER</div></div><div id="originalObjective"></div>
 <button id="objectiveBtn">OBJECTIVE</button><button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -1618,10 +1618,11 @@ function render(){
     const bb=35*fade*fog;
     for(let x=0;x<W;x++)setPix((y*W+x)*4,rr,gg,bb);
    }else{
-    const base=108;
-    const rr=base*fade*fog;
-    const gg=21*fade*fog;
-    const bb=20*fade*fog;
+    // Level 0/Original must never expose the old red fallback through the
+    // distant floor. Use a dark, neutral carpet-colored horizon instead.
+    const rr=originalMode?78*fade*fog:108*fade*fog;
+    const gg=originalMode?70*fade*fog:21*fade*fog;
+    const bb=originalMode?52*fade*fog:20*fade*fog;
     for(let x=0;x<W;x++)setPix((y*W+x)*4,rr,gg,bb);
    }
   }
