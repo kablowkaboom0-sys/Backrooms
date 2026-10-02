@@ -479,70 +479,133 @@ function updateOriginalObjective(){
  const el=document.getElementById('originalObjective');
  const current=document.getElementById('objectiveCurrent');
  const btn=document.getElementById('objectiveBtn');
+ const balanceUI=document.getElementById('balanceUI');
+ const interactBtn=document.getElementById('interactBtn');
  if(!el)return;
  if(!originalMode){
   el.style.display='none';
   if(btn)btn.style.display='none';
+  if(balanceUI)balanceUI.style.display='none';
+  if(interactBtn)interactBtn.style.display='none';
   return;
  }
  el.style.display='block';
  if(btn)btn.style.display='block';
+ if(balanceUI)balanceUI.style.display=originalPitActive()?'block':'none';
+ if(interactBtn)interactBtn.style.display=gameStarted?'block':'none';
  const room=originalRoomAt(Math.floor(px),Math.floor(py))||'LOBBY';
  let text='ROOM: '+room+' • ';
  let currentText='';
  if(originalLadderCollected<4){
   text+='LADDER PIECES: '+originalLadderCollected+'/4';
-  currentText='Find the remaining ladder pieces ('+originalLadderCollected+'/4 collected).';
+  currentText='Find the broken ladder room and collect the remaining ladder pieces ('+originalLadderCollected+'/4).';
+ }else if(!originalLadderFixed){
+  text+='4/4 PIECES • REPAIR LADDER';
+  currentText='Return to the broken ladder and press F / INTERACT to repair it.';
+ }else if(!originalLadderClimbed){
+  text+='LADDER REPAIRED • CLIMB';
+  currentText='Press F / INTERACT at the repaired ladder to climb it and take the key.';
  }else if(!originalHasKey){
-  text='LADDER REPAIRED • FIND THE KEY';
-  currentText='All 4 pieces are collected. Find the key using the repaired ladder.';
+  text+='CLIMBED • GET THE KEY';
+  currentText='Take the key from the top of the ladder.';
  }else if(!originalDoorOpen){
   text='KEY FOUND • UNLOCK THE DOOR';
-  currentText='You have the key. Find the locked door and open it.';
- }else if(!originalLowerRoute){
+  currentText='Find the wooden door and press F / INTERACT to unlock it.';
+ }else if(!originalPitCrossed&&!originalLowerRoute){
   text='DOOR OPEN • CROSS THE PITFALLS';
-  currentText='Cross the Pitfalls. Falling sends you to the lower route.';
+  currentText='Cross the Pitfalls. Use Q/E to keep your balance. Reach the vent on the far side.';
+ }else if(originalLowerRoute){
+  text='LOWER ROUTE • FOLLOW THE ARROWS';
+  currentText='Use the wall arrows through the lower level to reach the alternate vent.';
  }else{
-  text='FOLLOW THE ARROWS • FIND THE VENT';
-  currentText='The route is open. Follow the path and find an exit / vent.';
+  text='PITFALLS CLEARED • FIND THE VENT';
+  currentText='Reach the vent on the far side of the Pitfalls.';
  }
  el.textContent=text;
  if(current)current.textContent=currentText;
 }
+function updateBalanceUI(){
+ const fill=document.getElementById('balanceFill');
+ const text=document.getElementById('balanceText');
+ if(!fill||!text)return;
+ const pct=Math.max(0,Math.min(100,(originalBalance+1)*50));
+ fill.style.width=pct+'%';
+ text.textContent=Math.abs(originalBalance)<.12?'CENTER':(originalBalance<0?'LEAN LEFT':'LEAN RIGHT');
+}
+function queueOriginalInteract(){ originalInteractQueued=true; }
+function triggerOriginalDrop(){
+ if(originalLowerRoute||originalPitCrossed)return;
+ originalLowerRoute=true;
+ originalPitCrossed=false;
+ originalBalance=0;
+ originalLeanInput=0;
+ playerHealth=Math.max(1,playerHealth-15);
+ updateHealthUI();
+ const recovery=nearestWalkable(132,103,12)||nearestWalkable(132,96,12)||startCell;
+ px=recovery.x+.5;py=recovery.y+.5;pa=Math.PI;
+ updateOriginalObjective();
+}
+function updateOriginalPitBalance(now,dt){
+ if(!originalMode||paused||finished)return;
+ const active=originalPitActive();
+ const balanceUI=document.getElementById('balanceUI');
+ if(!active){
+  if(balanceUI)balanceUI.style.display='none';
+  return;
+ }
+ if(originalBalance===0)originalLeanInput=0;
+ const lean=(keys.q?-1:0)+(keys.e?1:0)+originalLeanInput;
+ originalBalance += Math.sin(now*.0047)*.10*dt;
+ originalBalance += lean*1.65*dt;
+ if(keys.w||keys.s||keys.a||keys.d)originalBalance += Math.sin(now*.0081)*.035*dt;
+ originalBalance=Math.max(-1.05,Math.min(1.05,originalBalance));
+ updateBalanceUI();
+ const progress=Math.max(0,Math.min(1,(py-62)/(94-62)));
+ if(progress>=.96){
+  originalPitCrossed=true;
+  originalBalance=0;
+  originalLeanInput=0;
+  updateOriginalObjective();
+  return;
+ }
+ if(Math.abs(originalBalance)>.98)triggerOriginalDrop();
+}
 function originalInteract(){
  if(!originalMode||paused||finished)return;
- const cx=Math.floor(px),cy=Math.floor(py);
- // Collect nearby ladder pieces.
+ const use=originalInteractQueued;
+ originalInteractQueued=false;
+ if(!use)return;
  for(let i=originalLadderPieces.length-1;i>=0;i--){
   const p=originalLadderPieces[i];
-  if(Math.hypot(px-(p.x+.5),py-(p.y+.5))<.7){
+  if(Math.hypot(px-(p.x+.5),py-(p.y+.5))<.9){
    originalLadderPieces.splice(i,1);
    originalLadderCollected++;
    updateOriginalObjective();
+   return;
   }
  }
- if(originalLadderCollected>=4&&!originalHasKey&&originalKeyCell&&Math.hypot(px-(originalKeyCell.x+.5),py-(originalKeyCell.y+.5))<.9){
+ if(originalLadderCollected>=4&&!originalLadderFixed&&originalLadderCell&&Math.hypot(px-(originalLadderCell.x+.5),py-(originalLadderCell.y+.5))<1.25){
+  originalLadderFixed=true;
+  updateOriginalObjective();
+  return;
+ }
+ if(originalLadderFixed&&!originalLadderClimbed&&originalLadderCell&&Math.hypot(px-(originalLadderCell.x+.5),py-(originalLadderCell.y+.5))<1.25){
+  originalLadderClimbed=true;
+  originalKeyCell=nearestWalkable(84,18,12)||originalLadderCell;
+  updateOriginalObjective();
+  return;
+ }
+ if(originalLadderClimbed&&!originalHasKey&&originalKeyCell&&Math.hypot(px-(originalKeyCell.x+.5),py-(originalKeyCell.y+.5))<1.0){
   originalHasKey=true;
   updateOriginalObjective();
+  return;
  }
  if(originalHasKey&&!originalDoorOpen&&originalDoorCell){
   const d=Math.hypot(px-(originalDoorCell.x+.5),py-(originalDoorCell.y+.5));
-  if(d<1.2){
+  if(d<1.25){
    originalDoorOpen=true;
    updateOriginalObjective();
   }
- }
- // Entering a pit drops the player to the darker lower layer.
- if(!originalPitfallTriggered&&originalPitAt(cx,cy)){
-  originalPitfallTriggered=true;
-  originalLowerRoute=true;
-  playerHealth=Math.max(1,playerHealth-15);
-  updateHealthUI();
-  // Recover at a nearby lower-route walkable cell.
-  const recovery={x:132,y:103};
-  px=recovery.x+.5;py=recovery.y+.5;pa=Math.PI;
-  updateOriginalObjective();
-  setTimeout(()=>{originalPitfallTriggered=false},900);
  }
 }
 function drawOriginalObjects(){
