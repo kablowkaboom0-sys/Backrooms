@@ -62,7 +62,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #moveStick{left:22px;bottom:24px}
 #lookStick{right:22px;bottom:24px}
 #run{position:absolute;right:60px;bottom:155px;width:64px;height:40px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(0,0,0,.2);color:#ddd;font:12px monospace;pointer-events:auto}
-#gamepadStatus{position:absolute;bottom:8px;right:9px;opacity:.38;font-size:9px;letter-spacing:1px}
+#originalObjective{position:absolute;top:168px;left:12px;max-width:260px;display:none;opacity:.72;font-size:10px;line-height:1.35;letter-spacing:1px;color:#eee;text-shadow:1px 1px #000}\n#gamepadStatus{position:absolute;bottom:8px;right:9px;opacity:.38;font-size:9px;letter-spacing:1px}
 @media(pointer:coarse){#touch{display:block}#hint{display:none}}
 </style>
 </head>
@@ -91,9 +91,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v19</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v20</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
-<div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div>
+<div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div><div id="originalObjective"></div>
 <button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
 <div id="cross"></div>
 <div id="hint">WASD / ARROWS TO MOVE • MOUSE OR Q/E TO LOOK • FIND THE EXIT</div>
@@ -165,6 +165,16 @@ let cluePathCellX=-1,cluePathCellY=-1;
 let entities=[];
 let difficultySize=41;
 let originalMode=false;
+let originalRoomZones=[];
+let originalLadderPieces=[];
+let originalLadderCollected=0;
+let originalKeyCell=null;
+let originalHasKey=false;
+let originalDoorCell=null;
+let originalDoorOpen=false;
+let originalPitCells=new Set();
+let originalPitfallTriggered=false;
+let originalLowerRoute=false;
 let gameMode="level0";
 let playMode="horror";
 let startCell={x:1,y:1};
@@ -309,23 +319,198 @@ function makeOriginalMap(){
   return out;
  });
  MW=152; MH=127;
- // Traced from the supplied Steam/Backrooms Level 0 floorplan.
- // BLACK in the reference is walkable space; WHITE is wall space.
- startCell={x:124,y:59};
- exitCells=[
-  {x:91,y:1},
-  {x:1,y:62},
-  {x:126,y:56},
-  {x:143,y:124}
+ setupOriginalMechanics(m);
+ return m;
+}
+
+function setupOriginalMechanics(m){
+ originalRoomZones=[
+  {name:'PILLAR ROOM',x1:108,y1:42,x2:140,y2:67},
+  {name:'LADDER ROOM',x1:62,y1:4,x2:108,y2:44},
+  {name:'PITFALLS',x1:68,y1:60,x2:125,y2:94},
+  {name:'LOWER LEVEL',x1:105,y1:88,x2:151,y2:126},
+  {name:'MANILA ROOM',x1:137,y1:101,x2:151,y2:116},
+  {name:'LEVEL 0.2 AREA',x1:142,y1:113,x2:151,y2:126}
  ];
- for(const ex of exitCells){
-  for(let yy=-1;yy<=1;yy++)for(let xx=-1;xx<=1;xx++){
-   const X=ex.x+xx,Y=ex.y+yy;
-   if(X>=0&&X<MW&&Y>=0&&Y<MH)m[Y][X]=0;
+ originalLadderPieces=[];
+ originalLadderCollected=0;
+ originalHasKey=false;
+ originalDoorOpen=false;
+ originalKeyCell=null;
+ originalDoorCell=null;
+ originalPitfallTriggered=false;
+ originalLowerRoute=false;
+ originalPitCells=new Set();
+
+ const inZone=(x,y,z)=>x>=z.x1&&x<=z.x2&&y>=z.y1&&y<=z.y2;
+ const candidates=[];
+ for(let y=5;y<44;y++)for(let x=62;x<108;x++){
+  if(m[y]?.[x]===0)candidates.push({x,y});
+ }
+ // Four ladder fragments, spread through the ladder room.
+ const chosen=[];
+ while(candidates.length&&chosen.length<4){
+  let best=null,bestScore=-1;
+  for(const c of candidates){
+   if(chosen.some(p=>p.x===c.x&&p.y===c.y))continue;
+   let score=chosen.length?Math.min(...chosen.map(p=>Math.hypot(c.x-p.x,c.y-p.y))):Math.hypot(c.x-84,c.y-24);
+   if(score>bestScore){bestScore=score;best=c;}
+  }
+  if(best){chosen.push(best);candidates.splice(candidates.indexOf(best),1);}
+ }
+ originalLadderPieces=chosen;
+
+ function nearestWalkable(cx,cy,rad=12){
+  let best=null,bd=Infinity;
+  for(let r=0;r<=rad;r++)for(let y=Math.max(1,cy-r);y<=Math.min(MH-2,cy+r);y++)for(let x=Math.max(1,cx-r);x<=Math.min(MW-2,cx+r);x++){
+   if(m[y]?.[x]!==0)continue;
+   const d=Math.hypot(x-cx,y-cy);
+   if(d<bd){bd=d;best={x,y};}
+  }
+  return best;
+ }
+ function snapExitWall(tx,ty){
+  let best=null,bd=Infinity;
+  for(let r=0;r<=18;r++)for(let y=Math.max(0,ty-r);y<=Math.min(MH-1,ty+r);y++)for(let x=Math.max(0,tx-r);x<=Math.min(MW-1,tx+r);x++){
+   if(m[y]?.[x]!==1)continue;
+   const adjacent=[[x+1,y],[x-1,y],[x,y+1],[x,y-1]].some(([ax,ay])=>ax>=0&&ay>=0&&ax<MW&&ay<MH&&m[ay][ax]===0);
+   if(!adjacent)continue;
+   const d=Math.hypot(x-tx,y-ty);
+   if(d<bd){bd=d;best={x,y};}
+  }
+  return best||{x:tx,y:ty};
+ }
+ const exitTargets=[
+  {x:91,y:1,name:'NORMAL EXIT'},
+  {x:1,y:62,name:'ALTERNATE EXIT'},
+  {x:143,y:124,name:'LOWER VENT'}
+ ];
+ exitCells=exitTargets.map(e=>snapExitWall(e.x,e.y));
+ exitCells.forEach((e,i)=>e.name=exitTargets[i].name);
+ exitCell=exitCells[0];
+
+ // Entry cells are the walkable tiles immediately in front of each wall exit.
+ exitEntryCells=exitCells.map(e=>{
+  const ns=[[e.x+1,e.y],[e.x-1,e.y],[e.x,e.y+1],[e.x,e.y-1]];
+  return ns.find(([x,y])=>x>=0&&y>=0&&x<MW&&y<MH&&m[y][x]===0)||[e.x,e.y];
+ });
+
+ // The locked door is snapped to a real wall on the approach to the Pitfalls.
+ let door=null,db=Infinity;
+ for(let y=55;y<=75;y++)for(let x=55;x<=78;x++){
+  if(m[y]?.[x]!==1)continue;
+  const adj=[[x+1,y],[x-1,y],[x,y+1],[x,y-1]].some(([ax,ay])=>ax>=0&&ay>=0&&ax<MW&&ay<MH&&m[ay][ax]===0);
+  if(!adj)continue;
+  const d=Math.hypot(x-67,y-66);
+  if(d<db){db=d;door={x,y};}
+ }
+ originalDoorCell=door||{x:67,y:66};
+
+ // The pitfall floor is represented as a third collision state: 2 = hole.
+ // These are the checkerboard holes in the supplied Level 0 map.
+ const pitCenters=[];
+ for(let y of [64,70,76,82,88])for(let x of [73,80,88,95,103,111,118]){
+  if(m[y]?.[x]===1)pitCenters.push({x,y});
+ }
+ for(const p of pitCenters){
+  m[p.y][p.x]=2;
+  originalPitCells.add(p.x+','+p.y);
+ }
+ // Give each pit a little footprint rather than a single-pixel trigger.
+ for(const p of pitCenters){
+  if(m[p.y]?.[p.x]===2){
+   for(const [dx,dy] of [[0,0],[1,0],[0,1]])if(m[p.y+dy]?.[p.x+dx]===1)m[p.y+dy][p.x+dx]=2;
   }
  }
- exitCell=exitCells[0];
- return m;
+ originalKeyCell=nearestWalkable(84,18,10)||nearestWalkable(84,24,10);
+}
+let exitEntryCells=[];
+
+function originalRoomAt(x,y){
+ if(!originalMode)return null;
+ for(const z of originalRoomZones)if(x>=z.x1&&x<=z.x2&&y>=z.y1&&y<=z.y2)return z.name;
+ return null;
+}
+function originalDoorLockedAt(x,y){
+ return originalMode&&!originalDoorOpen&&originalDoorCell&&x===originalDoorCell.x&&y===originalDoorCell.y;
+}
+function originalPitAt(x,y){
+ return originalMode&&originalPitCells.has(x+','+y);
+}
+function updateOriginalObjective(){
+ const el=document.getElementById('originalObjective');
+ if(!el)return;
+ if(!originalMode){el.style.display='none';return;}
+ el.style.display='block';
+ let text='';
+ if(originalLadderCollected<4)text='LADDER PIECES: '+originalLadderCollected+'/4';
+ else if(!originalHasKey)text='LADDER REPAIRED • FIND THE KEY';
+ else if(!originalDoorOpen)text='KEY FOUND • UNLOCK THE DOOR';
+ else if(!originalLowerRoute)text='DOOR OPEN • CROSS THE PITFALLS';
+ else text='FOLLOW THE ARROWS • FIND THE VENT';
+ el.textContent=text;
+}
+function originalInteract(){
+ if(!originalMode||paused||finished)return;
+ const cx=Math.floor(px),cy=Math.floor(py);
+ // Collect nearby ladder pieces.
+ for(let i=originalLadderPieces.length-1;i>=0;i--){
+  const p=originalLadderPieces[i];
+  if(Math.hypot(px-(p.x+.5),py-(p.y+.5))<.7){
+   originalLadderPieces.splice(i,1);
+   originalLadderCollected++;
+   updateOriginalObjective();
+  }
+ }
+ if(originalLadderCollected>=4&&!originalHasKey&&originalKeyCell&&Math.hypot(px-(originalKeyCell.x+.5),py-(originalKeyCell.y+.5))<.9){
+  originalHasKey=true;
+  updateOriginalObjective();
+ }
+ if(originalHasKey&&!originalDoorOpen&&originalDoorCell){
+  const d=Math.hypot(px-(originalDoorCell.x+.5),py-(originalDoorCell.y+.5));
+  if(d<1.2){
+   originalDoorOpen=true;
+   updateOriginalObjective();
+  }
+ }
+ // Entering a pit drops the player to the darker lower layer.
+ if(!originalPitfallTriggered&&originalPitAt(cx,cy)){
+  originalPitfallTriggered=true;
+  originalLowerRoute=true;
+  playerHealth=Math.max(1,playerHealth-15);
+  updateHealthUI();
+  // Recover at a nearby lower-route walkable cell.
+  const recovery={x:132,y:103};
+  px=recovery.x+.5;py=recovery.y+.5;pa=Math.PI;
+  updateOriginalObjective();
+  setTimeout(()=>{originalPitfallTriggered=false},900);
+ }
+}
+function drawOriginalObjects(){
+ if(!originalMode||!gameStarted)return;
+ const drawMarker=(cell,kind)=>{
+  if(!cell)return;
+  const dx=cell.x+.5-px,dy=cell.y+.5-py,dist=Math.hypot(dx,dy);
+  if(dist<.25||dist>RENDER_DISTANCE)return;
+  let da=Math.atan2(dy,dx)-pa;
+  while(da>Math.PI)da-=Math.PI*2;
+  while(da<-Math.PI)da+=Math.PI*2;
+  if(Math.abs(da)>currentFOV*.58)return;
+  const center=W/2+(Math.tan(da)/Math.tan(currentFOV/2))*(W/2);
+  const sx=Math.max(0,Math.min(W-1,Math.floor(center)));
+  if(dist>=depthBuffer[sx])return;
+  const h=Math.max(3,Math.min(16,H/dist*.18));
+  const w=Math.max(2,h*.42);
+  const top=H/2-h*.55;
+  if(kind==='piece')g.fillStyle='#d8b84c';
+  else if(kind==='key')g.fillStyle='#ddd8c2';
+  else return;
+  g.fillRect(center-w/2,top,w,h);
+  g.fillStyle='rgba(255,255,255,.35)';
+  g.fillRect(center-w/4,top,w*.18,h);
+ };
+ for(const p of originalLadderPieces)drawMarker(p,'piece');
+ if(originalLadderCollected>=4&&!originalHasKey)drawMarker(originalKeyCell,'key');
 }
 function poolCellType(x,y){
  if(gameMode!=="pool"||!poolRoomType[y]||poolRoomType[y][x]===undefined)return 0;
@@ -471,6 +656,7 @@ function findExit(){
 }
 function reset(){
  map=gameMode==="pool"?makePoolMap():(originalMode?makeOriginalMap():makeMap());findExit();
+ if(originalMode)updateOriginalObjective();
  ceilingLights=[];
  if(gameMode!=="pool"){
   for(let y=1;y<MH-1;y++)for(let x=1;x<MW-1;x++){
@@ -680,7 +866,11 @@ function regenHealth(now){
  }
 }
 
-function wall(x,y){return x<0||y<0||x>=MW||y>=MH||map[y][x]===1}
+function wall(x,y){
+ if(x<0||y<0||x>=MW||y>=MH)return true;
+ if(originalDoorOpen&&originalDoorCell&&x===originalDoorCell.x&&y===originalDoorCell.y)return false;
+ return map[y][x]===1;
+}
 function startGame(size){
  MW=gameMode==="pool"?(size===21?90:size===31?110:130):(originalMode?75:size);
  MH=gameMode==="pool"?MW:(originalMode?59:size);
@@ -688,10 +878,15 @@ function startGame(size){
  startCell=gameMode==="pool"?{x:1,y:1}:{x:1,y:1};
  gameStarted=true;
  document.getElementById('startScreen').style.display='none';
+ document.getElementById('originalObjective').style.display=originalMode?'block':'none';
  document.getElementById('title').textContent=gameMode==="pool"?"BACKROOMS // POOL ROOMS":(originalMode?"BACKROOMS // LEVEL 0 // ORIGINAL":"BACKROOMS // LEVEL 0");
  reset();
 }
-function atExit(x,y){return exitCells.some(e=>x===e.x&&y===e.y)}
+function atExitWallCell(x,y){return originalMode&&exitCells.some(e=>x===e.x&&y===e.y)}\nfunction atExit(x,y){
+ if(!exitCells.length)return false;
+ if(originalMode)return exitEntryCells.some(e=>x===e[0]&&y===e[1]);
+ return exitCells.some(e=>x===e.x&&y===e.y);
+}
 function move(dt){
  // Physical gamepad sticks mirror the two mobile joysticks.
  const gx=gamepadMoveX, gy=gamepadMoveY;
@@ -1272,7 +1467,11 @@ function render(){
     if(floorDepth>RENDER_DISTANCE)continue;
     const wx=px+floorCos*floorDepth;
     const wy=py+floorSin*floorDepth;
-    const ct=gameMode==="pool"?poolFloorTexture(wx,wy):carpetTexture(wx,wy);
+    let ct=gameMode==="pool"?poolFloorTexture(wx,wy):carpetTexture(wx,wy);
+    if(originalMode&&originalPitAt(Math.floor(wx),Math.floor(wy))){
+     const pulse=18+8*Math.sin(performance.now()*.002+wx*2.1+wy);
+     ct=[pulse,pulse*.8,pulse*.58];
+    }
     const depthFade=Math.max(.36,1-Math.max(0,floorDepth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.60);
     const light=Math.max(.55,1-floorDepth*.018)*depthFade;
     setPix((y*W+x)*4,ct[0]*light,ct[1]*light,ct[2]*light);
@@ -1294,6 +1493,7 @@ function render(){
   for(let i=0;i<80;i++){
    if(sdx<sdy){dist=sdx;sdx+=ddx;mx+=sx;side=0}
    else{dist=sdy;sdy+=ddy;my+=sy;side=1}
+   if(originalMode&&atExitWallCell(mx,my)){hitExit=true;hitExitCell={x:mx,y:my};break;}
    if(wall(mx,my))break;
    if(atExit(mx,my)){hitExit=true;hitExitCell={x:mx,y:my};break}
   }
@@ -1319,18 +1519,28 @@ function render(){
    let r,gc,b;
    if(hitExit){
     const ex=hitExitCell.x+.5,ey=hitExitCell.y+.5;
-    let da=Math.atan2(ey-py,ex-px)-pa;
+    let da=Math.atan2(ey-px*0+ey-py,ex-px)-pa;
     while(da>Math.PI)da-=Math.PI*2;
     while(da<-Math.PI)da+=Math.PI*2;
     const doorCenter=W/2+(Math.tan(da)/Math.tan(currentFOV/2))*(W/2);
-    const doorHalf=Math.max(2,line*.30);
-    const edge=Math.abs(x-doorCenter)/doorHalf;
-    if(edge<1 && y>top+line*.06 && y<top+line*.97){
-     const pulse=.9+.1*Math.sin(performance.now()*.006);
-     r=245*pulse;gc=245*pulse;b=238*pulse;
+    const frameHalf=Math.max(3,line*.42);
+    const innerHalf=frameHalf*.70;
+    const edge=Math.abs(x-doorCenter);
+    const yNorm=(y-top)/Math.max(1,line);
+    const pulse=.88+.12*Math.sin(performance.now()*.004);
+    // A flat, square doorway physically attached to the wall: no rounded corners.
+    if(edge<=frameHalf && yNorm>.04 && yNorm<.98){
+     const inside=edge<innerHalf && yNorm>.10 && yNorm<.94;
+     if(inside){
+      const glow=(.82+.18*Math.sin(performance.now()*.003));
+      r=220*glow;gc=226*glow;b=214*glow;
+      if(yNorm>.86){r=135;gc=128;b=104;}
+     }else{
+      r=34;gc=29;b=22;
+      if(edge>innerHalf*.96){r=88;gc=78;b=55;}
+     }
     }else{
-     const v=52+(1-edge)*55;
-     r=v+10;gc=v+8;b=v+3;
+     r=45;gc=37;b=26;
     }
    }else{
     const wt=gameMode==="pool"
@@ -1359,6 +1569,7 @@ function render(){
  drawCeilingLightsSafe();
  g.putImageData(img,0,0);
  drawClueArrows();
+ drawOriginalObjects();
  drawEntities();
  drawEntityGlitch(performance.now());
  drawStaminaVision();
@@ -1501,6 +1712,7 @@ function loop(now){
    updateEntities(simNow,1/30);
    if(document.getElementById('mapPanel').style.display==='flex') drawDevMap();
    regenHealth(simNow);
+   originalInteract();
    updateStamina(simNow,1/30);
    render();
   }catch(err){
