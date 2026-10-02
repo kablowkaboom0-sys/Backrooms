@@ -1023,7 +1023,7 @@ function updateStamina(now,dt){
  const f=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0);
  const strafe=(keys.d?1:0)-(keys.a?1:0);
  const moving=Math.abs(f)>0||Math.abs(strafe)>0;
- const sprinting=keys.shift&&moving&&playerStamina>0.001;
+ const sprinting=!crouching&&keys.shift&&moving&&playerStamina>0.001;
  if(sprinting)playerStamina=Math.max(0,playerStamina-STAMINA_DRAIN_PER_SEC*dt);
  else playerStamina=Math.min(STAMINA_MAX,playerStamina+STAMINA_REGEN_PER_SEC*dt);
  if(playerStamina<=0.001)playerStamina=0;
@@ -1092,10 +1092,10 @@ function move(dt){
   if(keys.e||keys.arrowright)pa+=dt*1.8;
  }
  const fMoving=Math.abs(f)>0||Math.abs(s)>0;
- const sprinting=keys.shift&&fMoving&&playerStamina>0.001;
+ const sprinting=!crouching&&keys.shift&&fMoving&&playerStamina>0.001;
  const exhaustedBase=playerStamina<=LOW_STAMINA_THRESHOLD;
  const baseSpeed=exhaustedBase?BASE_SPEED*.8:BASE_SPEED;
- const sp=baseSpeed*(crouching?.58:1)*(sprinting?SPRINT_MULTIPLIER:1),ca=Math.cos(pa),sa=Math.sin(pa);
+ const sp=baseSpeed*(crouching?.38:1)*(sprinting?SPRINT_MULTIPLIER:1),ca=Math.cos(pa),sa=Math.sin(pa);
  const dx=(ca*f-sa*s)*sp*dt,dy=(sa*f+ca*s)*sp*dt,r=.2;
  if(!wall(Math.floor(px+dx+r*Math.sign(dx)),Math.floor(py)))px+=dx;
  if(!wall(Math.floor(px),Math.floor(py+dy+r*Math.sign(dy))))py+=dy;
@@ -1553,7 +1553,7 @@ function render(){
    // approximation caused distant ceiling tiles to stretch because each screen
    // row was mapped to an arbitrary world distance.
    const focal=H/.92;
-   const cameraZ=crouching?.26:.46;
+   const cameraZ=crouching?.18:.46;
    const ceilingZ=.92;
    const ceilingDepth=Math.min(RENDER_DISTANCE,(ceilingZ-cameraZ)*focal/Math.max(1,hz-y));
    for(let x=0;x<W;x++){
@@ -1628,7 +1628,7 @@ function render(){
    const floorCos=Math.cos(floorRayAngle),floorSin=Math.sin(floorRayAngle);
    for(let y=Math.floor(hz)+1;y<H;y++){
     const focal=H*.92;
-    const cameraHeight=crouching?.26:.46;
+    const cameraHeight=crouching?.18:.46;
     const vertical=(y-hz)/focal;
     const floorDepth=cameraHeight/Math.max(.012,vertical);
     if(floorDepth>RENDER_DISTANCE)continue;
@@ -1680,7 +1680,7 @@ function render(){
   // This makes crouching visibly lower the camera: the wall moves on screen
   // instead of only changing the floor/ceiling sampling.
   const wallFocal=H*.92;
-  const wallCameraHeight=crouching?.26:.46;
+  const wallCameraHeight=crouching?.18:.46;
   const wallCeilingHeight=.92;
   const wallTop=Math.max(0,Math.floor(hz-(wallCeilingHeight-wallCameraHeight)*wallFocal/dist));
   const wallBottom=Math.min(H,Math.ceil(hz+wallCameraHeight*wallFocal/dist));
