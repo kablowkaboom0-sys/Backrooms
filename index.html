@@ -3032,18 +3032,41 @@ function handleTVMenuKey(e){
  if(!items.length)return false;
  const sig=getTVMenuSignature(items);
  if(sig!==tvMenuSignature){tvMenuItems=items;tvMenuSignature=sig;tvMenuIndex=0;}
- if(e.key==='ArrowUp'||e.key==='ArrowLeft'){
-  tvMenuIndex=(tvMenuIndex-1+items.length)%items.length;refreshTVMenuFocus();e.preventDefault();e.stopPropagation();return true;
+
+ // BrowseHere / Android TV may expose the remote as Android DPAD key codes
+ // instead of the usual browser Arrow/Enter key names.
+ const code=e.keyCode||e.which||0;
+ const up=e.key==='ArrowUp'||code===38||code===19;
+ const down=e.key==='ArrowDown'||code===40||code===20;
+ const left=e.key==='ArrowLeft'||code===37||code===21;
+ const right=e.key==='ArrowRight'||code===39||code===22;
+ const select=e.key==='Enter'||e.key===' '||e.key==='Spacebar'||
+   e.key==='NumpadEnter'||e.key==='Select'||e.key==='Accept'||e.key==='OK'||
+   e.code==='NumpadEnter'||code===13||code===23||code===66;
+
+ if(up||left){
+  tvMenuIndex=(tvMenuIndex-1+items.length)%items.length;
+  refreshTVMenuFocus();e.preventDefault();e.stopPropagation();return true;
  }
- if(e.key==='ArrowDown'||e.key==='ArrowRight'){
-  tvMenuIndex=(tvMenuIndex+1)%items.length;refreshTVMenuFocus();e.preventDefault();e.stopPropagation();return true;
+ if(down||right){
+  tvMenuIndex=(tvMenuIndex+1)%items.length;
+  refreshTVMenuFocus();e.preventDefault();e.stopPropagation();return true;
  }
- if(['Enter',' ','Spacebar','NumpadEnter','Select','Accept','OK'].includes(e.key)||e.code==='NumpadEnter'){
+ if(select){
   activateTVSelection();e.preventDefault();e.stopPropagation();return true;
  }
  return false;
 }
 document.addEventListener('keydown',handleTVMenuKey,true);
+// Some TV WebViews deliver keyboard events through keypress instead of keydown.
+// Mirror the same compatibility handling without changing normal gameplay keys.
+document.addEventListener('keypress',e=>{
+ if(document.getElementById('startScreen').style.display==='none')return;
+ const code=e.keyCode||e.which||0;
+ if([13,23,66,37,38,39,40,19,20,21,22].includes(code)){
+  handleTVMenuKey(e);
+ }
+},true);
 
 // Pointer-controlled TV browser support. Pointer movement highlights a button;
 // pointer release directly activates it, even if the TV browser does not turn
