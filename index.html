@@ -466,7 +466,9 @@ function setupOriginalMechanics(m){
  // Each segment is only one map cell wide, producing the thin-ledge feel
  // from the supplied reference rather than a checkerboard floor.
  const ledgeWaypoints=[
-  [130,60],[135,60],[135,54],[141,54],[141,65],
+  // Short entry ledge immediately beyond the wooden door.
+  [128,59],[129,59],[130,60],
+  [135,60],[135,54],[141,54],[141,65],
   [146,65],[146,57],[150,57],[150,60]
  ];
  const carveLedge=(x,y)=>{
