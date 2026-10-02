@@ -1578,9 +1578,10 @@ function render(){
     // Fixtures are part of the ceiling plane, so they retain correct
     // perspective at every distance. Each one is centered in its tile.
     const fixtureCell=ceilingLightCells.has(tileX+','+tileY);
-    const fixtureX=Math.abs(localX-.5)<.32;
-    const fixtureY=Math.abs(localY-.5)<.14;
-    const fixtureEdge=Math.abs(localX-.5)>.29||Math.abs(localY-.5)>.11;
+    // Square fluorescent fixture: equal width and depth in the ceiling grid.
+    const fixtureX=Math.abs(localX-.5)<.22;
+    const fixtureY=Math.abs(localY-.5)<.22;
+    const fixtureEdge=Math.abs(localX-.5)>.19||Math.abs(localY-.5)>.19;
     const isFixture=fixtureCell&&fixtureX&&fixtureY;
 
     let cr=190+tileNoise+seam;
