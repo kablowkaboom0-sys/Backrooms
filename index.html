@@ -455,17 +455,6 @@ function makeRobloxBackroomsMap(){
 
  // Red carpet is deliberately far from the spawn, running down the final
  // distant exit corridor instead of being visible immediately at the start.
- for(let y=83;y<=116;y++){
-  for(let x=141;x<=145;x++){
-   carve(x,y);
-   robloxRedCarpetCells.add(x+','+y);
-  }
- }
- for(let x=137;x<=145;x++){
-  carve(x,82);
-  robloxRedCarpetCells.add(x+',82');
- }
- robloxRedCarpetCells.add('143,116');
 
  // Brown arrows point through the actual route. The final arrows sit beside
  // the red-carpet section and lead to the green exit door.
