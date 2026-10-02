@@ -615,6 +615,14 @@ function setupOriginalMechanics(m){
  // Keep the entrance sealed until the key is used.
  m[59][127]=1;
  originalDoorCell={x:127,y:59};
+ // Seal every other upper-level entrance around the Pitfalls.
+ for(let y=pitY1;y<=pitY2;y++){
+  if(y!==59)m[y][127]=1;
+ }
+ for(let x=128;x<=150;x++){
+  m[47][x]=1;
+  m[85][x]=1;
+ }
 
  // Exit 2 is on the right edge of the Pitfalls, exactly where the reference
  // places it. Exit 1 is on the bottom edge for the lower route.
@@ -1413,17 +1421,6 @@ function atExit(x,y){
  }
  return false;
 }
-function constrainOriginalLedge(x,y){
- if(!originalMode)return [x,y];
- const cx=Math.floor(x),cy=Math.floor(y);
- if(!originalPitLedgeAt(cx,cy))return [x,y];
- const lx=x-cx,ly=y-cy;
- const h=originalPitLedgeAt(cx-1,cy)||originalPitLedgeAt(cx+1,cy);
- const v=originalPitLedgeAt(cx,cy-1)||originalPitLedgeAt(cx,cy+1);
- if(h&&Math.abs(ly-.5)>.125)y=cy+.5;
- if(v&&Math.abs(lx-.5)>.125)x=cx+.5;
- return [x,y];
-}
 function move(dt){
  // Resolve crouch state before movement/camera calculations so it applies immediately.
  crouching=crouchHeld||crouchToggle;
@@ -1451,7 +1448,6 @@ function move(dt){
  let nx=px,ny=py;
  if(!wall(Math.floor(px+dx+r*Math.sign(dx)),Math.floor(py)))nx+=dx;
  if(!wall(Math.floor(px),Math.floor(py+dy+r*Math.sign(dy))))ny+=dy;
- [nx,ny]=constrainOriginalLedge(nx,ny);
  px=nx;py=ny;
  if(gameMode==="pool"){const targetFloor=poolFloorAt(px,py);pz=0}
  // Ladder pieces are picked up by walking into them. F/INTERACT still works,
