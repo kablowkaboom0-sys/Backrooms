@@ -1018,14 +1018,28 @@ function makeOriginalPoolMap(){
  poolFloorHeight=Array.from({length:MH},()=>Array(MW).fill(0));
  poolWaterDepth=Array.from({length:MH},()=>Array(MW).fill(0));
  poolOriginalDarkRooms=[];poolOriginalHotCells=new Set();poolOriginalExitCells=[];poolOriginalHubCell=null;
- poolOriginalSpawnPoints=[{x:25,y:59},{x:91,y:78},{x:53,y:18},{x:92,y:31}];
+
+ // Level 37 map structure: four spawn areas, central Poolrooms, the
+ // square-entry/intersection route, two wavy rooms, sewer dungeon,
+ // three Dark-Tiled Rooms, Hot Water Zone, Hub Door and Level ! hallway.
+ poolOriginalSpawnPoints=[
+  {x:19,y:66},{x:34,y:25},{x:78,y:25},{x:104,y:73}
+ ];
 
  const carve=(x,y,type=1,water=.16)=>{
   if(x<=0||y<=0||x>=MW-1||y>=MH-1)return;
   m[y][x]=0;poolRoomType[y][x]=type;poolWaterDepth[y][x]=water;
  };
- const room=(x1,y1,x2,y2,type=1,water=.16)=>{
+ const rect=(x1,y1,x2,y2,type=1,water=.16)=>{
   for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)carve(x,y,type,water);
+ };
+ const room=(x1,y1,x2,y2,type=1,water=.16,openings=[])=>{
+  // Build an enclosed room first, then cut only the specified doorway cells.
+  for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++){
+   const edge=x===x1||x===x2||y===y1||y===y2;
+   if(!edge)carve(x,y,type,water);
+  }
+  for(const [x,y] of openings)carve(x,y,type,water);
  };
  const corridor=(x1,y1,x2,y2,width=1,type=1,water=.13)=>{
   let x=x1,y=y1;const sx=Math.sign(x2-x1),sy=Math.sign(y2-y1);
@@ -1033,55 +1047,123 @@ function makeOriginalPoolMap(){
    if(ox*ox+oy*oy<=width*width+1)carve(x+ox,y+oy,type,water);};
   stamp();while(x!==x2){x+=sx;stamp();}while(y!==y2){y+=sy;stamp();}
  };
- const wavy=points=>{for(let i=0;i<points.length-1;i++)corridor(...points[i],...points[i+1],1,1,.13);};
+ const wavy=(points,width=1)=>{
+  for(let i=0;i<points.length-1;i++)corridor(points[i][0],points[i][1],points[i+1][0],points[i+1][1],width,1,.13);
+ };
 
- room(42,45,82,91,2,.22);
- for(let x=46;x<=78;x+=5)for(let y=49;y<=87;y+=6)
-  for(let oy=0;oy<2;oy++)if(m[y+oy]?.[x]===0)m[y+oy][x]=1;
-
- room(9,53,38,69,1,.15);room(15,56,30,66,1,.15);
- corridor(8,59,2,59,1,1,.12);
- for(let x=2;x<=12;x++)for(let y=56;y<=61;y++)carve(x,y,1,.10);
- for(let x=3;x<=10;x+=2)for(let y=57;y<=60;y++)m[y][x]=1;
- poolOriginalHubCell={x:4,y:59};
-
- room(88,64,101,91,1,.16);corridor(82,76,88,76,1,1,.13);
-
- wavy([[62,91],[62,96],[67,99],[67,104],[62,107],[58,107],[58,111],[63,114]]);
- room(57,108,67,117,1,.15);room(59,111,66,118,3,.56);
- poolOriginalDarkRooms.push({x1:59,y1:111,x2:66,y2:118});
-
- corridor(61,45,61,40,1,1,.13);room(56,34,67,40,1,.14);
- wavy([[61,34],[57,31],[52,31],[49,28],[44,28],[42,25]]);
- room(39,23,45,29,1,.14);
-
- room(44,20,59,27,2,.19);
- for(let x=47;x<=57;x+=3)for(let y=22;y<=25;y+=3)
-  for(let oy=0;oy<2;oy++)if(m[y+oy]?.[x]===0)m[y+oy][x]=1;
-
- wavy([[59,23],[64,23],[68,20],[73,20],[77,23],[82,23]]);
- room(80,16,94,28,1,.15);room(96,14,111,29,2,.18);room(109,18,118,25,4,.07);
-
- room(67,6,93,17,2,.18);
- for(let i=0;i<6;i++)for(let y=10+i;y<=11+i;y++)for(let x=76+i;x<=84-i;x++)
-  if(m[y]?.[x]===0)poolFloorHeight[y][x]=Math.min(.34,i*.06);
- poolOriginalHubCell={x:80,y:8};
-
- room(47,8,58,18,1,.13);corridor(53,18,53,21,1,1,.12);
- room(49,6,57,11,3,.55);poolOriginalDarkRooms.push({x1:49,y1:6,x2:57,y2:11});
- room(94,50,101,61,3,.55);poolOriginalDarkRooms.push({x1:94,y1:50,x2:101,y2:61});
-
- const hx=35,hy=34;
- for(let r=1;r<=7;r++)for(let a=0;a<=1.45*Math.PI;a+=.16){
-  const x=Math.round(hx+Math.cos(a)*r),y=Math.round(hy+Math.sin(a)*r);
-  if(x>1&&y>1&&x<MW-2&&y<MH-2){carve(x,y,5,.82);poolOriginalHotCells.add(x+','+y);poolFloorHeight[y][x]=Math.min(.7,r*.08);}
+ // CENTRAL POOLROOMS: large open chambers separated by the characteristic
+ // square columns/walls instead of one featureless rectangle.
+ rect(36,42,108,96,2,.21);
+ const centralWalls=[
+  [43,47,43,62],[43,76,43,89],[54,42,54,53],[54,68,54,78],
+  [67,47,67,59],[67,70,67,91],[81,42,81,55],[81,65,81,78],
+  [94,48,94,64],[94,74,94,96],
+  [37,58,49,58],[58,58,69,58],[75,58,88,58],[99,69,107,69],
+  [48,82,60,82],[72,82,83,82],[87,87,101,87]
+ ];
+ for(const [x1,y1,x2,y2] of centralWalls){
+  let x=x1,y=y1;while(true){m[y][x]=1;if(x===x2&&y===y2)break;x+=Math.sign(x2-x);y+=Math.sign(y2-y);}
  }
- for(let y=28;y<=40;y++)for(let x=29;x<=41;x++)if(Math.hypot(x-hx,y-hy)<2.2){
-  carve(x,y,5,.95);poolOriginalHotCells.add(x+','+y);poolFloorHeight[y][x]=.72;
- }
- corridor(42,34,41,34,1,1,.13);
+ // Re-open deliberate passage points through the internal walls.
+ [[43,63],[43,64],[54,53],[54,68],[67,59],[67,70],[81,55],[81,65],
+  [94,64],[94,74],[49,58],[58,58],[69,58],[75,58],[88,58],[99,69],
+  [60,82],[72,82],[83,82],[87,87]].forEach(([x,y])=>carve(x,y,2,.21));
 
- poolOriginalExitCells=[{x:117,y:21,name:'LEVEL !',label:'RED EXIT'},{x:80,y:7,name:'THE HUB',label:'HUB DOOR'}];
+ // FOUR SPAWN ROOMS/AREAS around the complex.
+ room(8,59,25,73,1,.13,[[25,66]]);
+ room(27,15,42,29,1,.13,[[34,29]]);
+ room(70,14,86,30,1,.13,[[78,30]]);
+ room(99,66,113,80,1,.13,[[99,73]]);
+ corridor(25,66,36,66,1,1,.13);
+ corridor(42,29,50,35,1,1,.13);
+ corridor(78,30,78,42,1,1,.13);
+ corridor(99,73,108,73,1,1,.13);
+
+ // SQUARE ENTRANCES -> MAIN INTERSECTION.
+ rect(46,31,60,40,1,.14);
+ // Four square doorway openings inside the entrance block.
+ for(const [x,y] of [[49,33],[53,33],[57,33],[53,38]])carve(x,y,1,.14);
+ corridor(53,40,53,47,1,1,.13);
+
+ // HOT WATER ZONE: an actual enclosed spiral/stair room, not scattered hot cells.
+ room(18,29,35,46,5,.45,[[35,37]]);
+ for(let r=1;r<=7;r++){
+  for(let a=0;a<=Math.PI*1.75;a+=.13){
+   const x=Math.round(27+Math.cos(a)*r),y=Math.round(38+Math.sin(a)*r);
+   if(x>19&&x<35&&y>30&&y<45){
+    carve(x,y,5,.88);poolOriginalHotCells.add(x+','+y);
+    poolFloorHeight[y][x]=Math.min(.75,r*.09);
+   }
+  }
+ }
+ rect(24,35,30,41,5,.95);
+ for(let y=35;y<=41;y++)for(let x=24;x<=30;x++)poolOriginalHotCells.add(x+','+y);
+
+ // FIRST WAVY ROOM. The route bends instead of being a straight corridor.
+ wavy([[53,47],[59,47],[63,44],[69,44],[73,47],[78,47],[82,44],[88,44]],1);
+ room(82,39,94,50,1,.14,[[82,44],[94,45]]);
+
+ // SEWER DUNGEON: narrow enclosed channels with repeated side walls.
+ room(88,37,105,55,2,.18,[[88,45],[105,49]]);
+ for(const x of [92,97,102]){
+  for(let y=40;y<=52;y++)if(y!==45&&y!==49)m[y][x]=1;
+ }
+ for(const [x,y] of [[92,45],[97,45],[102,49],[97,49]])carve(x,y,2,.18);
+
+ // SECOND WAVY ROOM and the EXIT ROOM.
+ wavy([[105,49],[110,49],[114,46],[119,46],[123,49],[127,49],[131,46]],1);
+ room(126,39,143,56,2,.16,[[126,46],[143,50]]);
+ // Short red hallway to Level !.
+ for(let x=143;x<=149;x++)for(let y=48;y<=53;y++)carve(x,y,4,.06);
+ for(let x=146;x<=149;x++)for(let y=48;y<=53;y++)poolWaterDepth[y][x]=.04;
+
+ // DARK-TILED ROOM 1: separate enclosed blue-tile chamber.
+ room(8,8,24,21,3,.56,[[24,15]]);
+ rect(11,11,21,18,3,.56);
+ poolOriginalDarkRooms.push({x1:8,y1:8,x2:24,y2:21});
+
+ // DARK-TILED ROOM 2: upper-right chamber.
+ room(104,8,119,22,3,.56,[[104,16]]);
+ rect(107,11,116,19,3,.56);
+ poolOriginalDarkRooms.push({x1:104,y1:8,x2:119,y2:22});
+
+ // DARK-TILED ROOM 3: lower branch chamber.
+ room(72,101,88,116,3,.56,[[80,101]]);
+ rect(75,104,85,113,3,.56);
+ poolOriginalDarkRooms.push({x1:72,y1:101,x2:88,y2:116});
+ corridor(80,96,80,101,1,1,.13);
+
+ // Lower wavy side route, ending at Dark-Tiled Room 3.
+ wavy([[48,96],[48,101],[53,104],[53,108],[58,111],[65,111],[72,108],[80,101]],1);
+
+ // RIGHT-SIDE OPEN POOL branch.
+ rect(108,65,137,94,2,.20);
+ for(const [x1,y1,x2,y2] of [[115,69,115,84],[126,65,126,78],[126,86,126,94],[116,86,121,86]])
+  {let x=x1,y=y1;while(true){m[y][x]=1;if(x===x2&&y===y2)break;x+=Math.sign(x2-x);y+=Math.sign(y2-y);}}
+ [[115,85],[126,79],[126,86],[121,86]].forEach(([x,y])=>carve(x,y,2,.20));
+ corridor(108,73,99,73,1,1,.13);
+
+ // LARGE HUB ROOM and its staircase.
+ room(37,4,67,19,2,.18,[[53,19],[67,11]]);
+ rect(48,7,61,16,2,.18);
+ for(let i=0;i<6;i++){
+  const y=13-i,x1=55+i,x2=61-i;
+  for(let x=x1;x<=x2;x++)if(m[y]?.[x]===0)poolFloorHeight[y][x]=.08*i;
+ }
+ poolOriginalHubCell={x:61,y:11};
+ corridor(67,11,78,11,1,1,.13);
+
+ // Hub door is a real enclosed endpoint.
+ room(76,6,86,16,2,.12,[[76,11]]);
+ poolOriginalHubCell={x:76,y:11};
+
+ // Exit and Hub destinations.
+ poolOriginalExitCells=[
+  {x:148,y:50,name:'LEVEL !',label:'RED EXIT'},
+  {x:76,y:11,name:'THE HUB',label:'HUB DOOR'}
+ ];
+
+ // Pick one of the four actual spawn areas for each run.
  const sp=poolOriginalSpawnPoints[Math.floor(Math.random()*poolOriginalSpawnPoints.length)];
  startCell={x:sp.x,y:sp.y};carve(sp.x,sp.y,1,.13);
  return m;
