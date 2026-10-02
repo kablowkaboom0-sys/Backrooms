@@ -3187,6 +3187,7 @@ function openMap(){
 }
 function closeMap(){document.getElementById('mapPanel').style.display='none'}
 document.getElementById('backLevelsFromModes').onclick=e=>{ e.preventDefault();
+ location.hash='#levels';
  document.getElementById('modeChoices').style.display='flex';
  document.getElementById('horrorChoices').style.display='none';
  document.getElementById('difficultyChoices').style.display='none';
@@ -3264,7 +3265,10 @@ function applyTVMenuHash(){
  }
 }
 addEventListener('hashchange',applyTVMenuHash);
-document.querySelectorAll('#modeChoices .mode').forEach(btn=>btn.onclick=e=>{ e.preventDefault();
+document.querySelectorAll('#modeChoices .mode').forEach(btn=>btn.onclick=e=>{
+ e.preventDefault();
+ const nextHash='#'+btn.dataset.mode;
+ if(location.hash!==nextHash){location.hash=nextHash;return;}
  gameMode=btn.dataset.mode;
  originalMode=false;poolOriginalMode=false;
  const originalBtn=document.getElementById('originalModeBtn');
@@ -3288,6 +3292,7 @@ document.querySelectorAll('#horrorChoices .mode').forEach(btn=>btn.onclick=e=>{
  document.getElementById('startSub').textContent=(gameMode==="pool"?'POOL ROOMS':'LEVEL 0')+' // '+(playMode==="peaceful"?'PEACEFUL':'HORROR')+' // CHOOSE DIFFICULTY';
 });
 document.getElementById('backModes').onclick=e=>{ e.preventDefault();
+ location.hash='#'+gameMode;
  document.getElementById('difficultyChoices').style.display='none';
  document.getElementById('horrorChoices').style.display='flex';
  document.getElementById('startSub').textContent=gameMode==="pool"?'POOL ROOMS // CHOOSE MODE':'LEVEL 0 // CHOOSE MODE';
