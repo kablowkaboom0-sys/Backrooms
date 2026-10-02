@@ -67,7 +67,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 .knob{position:absolute;width:44px;height:44px;left:32px;top:32px;border-radius:50%;background:rgba(220,200,130,.25);border:1px solid rgba(255,255,255,.25)}
 #moveStick{left:22px;bottom:24px}
 #lookStick{right:22px;bottom:24px}
-#run{position:absolute;right:60px;bottom:155px;width:64px;height:40px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(0,0,0,.2);color:#ddd;font:12px monospace;pointer-events:auto}#interactBtn{position:absolute;right:136px;bottom:155px;width:78px;height:40px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(0,0,0,.2);color:#ddd;font:12px monospace;pointer-events:auto;display:none}
+#run{position:absolute;right:60px;bottom:155px;width:64px;height:40px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(0,0,0,.2);color:#ddd;font:12px monospace;pointer-events:auto}#interactBtn{position:absolute;right:136px;bottom:155px;width:78px;height:40px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(0,0,0,.2);color:#ddd;font:12px monospace;pointer-events:auto;display:none}#crouchBtn{position:absolute;right:136px;bottom:108px;width:78px;height:40px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(0,0,0,.2);color:#ddd;font:12px monospace;pointer-events:auto;display:none}
 #originalObjective{position:absolute;top:168px;left:12px;max-width:260px;display:none;opacity:.72;font-size:10px;line-height:1.35;letter-spacing:1px;color:#eee;text-shadow:1px 1px #000}
 #gamepadStatus{position:absolute;bottom:8px;right:9px;opacity:.38;font-size:9px;letter-spacing:1px}
 @media(pointer:coarse){#touch{display:block}#hint{display:none}}
@@ -140,7 +140,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <div id="touch">
 <div class="stick" id="moveStick"><div class="knob"></div></div>
 <div class="stick" id="lookStick"><div class="knob"></div></div>
-<button id="run">RUN</button><button id="interactBtn">INTERACT</button>
+<button id="run">RUN</button><button id="interactBtn">INTERACT</button><button id="crouchBtn">CROUCH</button>
 </div>
 <script>
 'use strict';
@@ -561,7 +561,7 @@ function updateOriginalPitBalance(now,dt){
  originalBalance=Math.max(-1.05,Math.min(1.05,originalBalance));
  updateBalanceUI();
  const progress=Math.max(0,Math.min(1,(py-62)/(94-62)));
- if(progress>=.96){
+ if(progress>=.90){
   originalPitCrossed=true;
   originalBalance=0;
   originalLeanInput=0;
@@ -788,6 +788,7 @@ function reset(){
   }
  }
  px=startCell.x+.5;py=startCell.y+.5;pa=0;pz=poolFloorAt(px,py);startTime=performance.now();
+ if(originalMode)updateOriginalObjective();
  playerStamina=STAMINA_MAX;lastStaminaUpdate=startTime;updateStaminaUI();
  cluesEnabled=false;cluePath=[];cluePathCellX=-1;cluePathCellY=-1;updateClueToggle();
  playerHealth=100;lastRegen=startTime;lastEntityThink=0;
@@ -1004,6 +1005,7 @@ function startGame(size){
  document.getElementById('objectivePanel').style.display='none';
  document.getElementById('objectiveBtn').style.display=originalMode?'block':'none';
  document.getElementById('interactBtn').style.display=originalMode?'block':'none';
+ document.getElementById('crouchBtn').style.display=originalMode?'block':'none';
  document.getElementById('originalObjective').style.display=originalMode?'block':'none';
  document.getElementById('title').textContent=gameMode==="pool"?"BACKROOMS // POOL ROOMS":(originalMode?"BACKROOMS // LEVEL 0 // ORIGINAL":"BACKROOMS // LEVEL 0");
  reset();
@@ -1016,8 +1018,8 @@ function atExit(x,y){
   const e=exitEntryCells[i];
   if(x!==e[0]||y!==e[1])continue;
   const name=exitCells[i]?.name||'';
-  if(name==='NORMAL EXIT')return originalLadderClimbed&&originalHasKey&&originalDoorOpen&&originalPitCrossed&&!originalLowerRoute;
-  if(name==='ALTERNATE EXIT')return originalLowerRoute;
+  if(name==='NORMAL EXIT')return originalLadderClimbed&&originalHasKey&&originalDoorOpen&&originalPitCrossed&&!originalLowerRoute&&keys.control;
+  if(name==='ALTERNATE EXIT')return originalLowerRoute&&keys.control;
  }
  return false;
 }
@@ -1769,6 +1771,9 @@ const run=document.getElementById('run');
 run.onpointerdown=e=>{e.preventDefault();keys.shift=true};run.onpointerup=run.onpointercancel=()=>keys.shift=false;
 const interactBtn=document.getElementById('interactBtn');
 interactBtn.onpointerdown=e=>{e.preventDefault();queueOriginalInteract()};
+const crouchBtn=document.getElementById('crouchBtn');
+crouchBtn.onpointerdown=e=>{e.preventDefault();keys.control=true};
+crouchBtn.onpointerup=crouchBtn.onpointercancel=()=>keys.control=false;
 
 function updateClueToggle(){
  const b=document.getElementById('clueToggle');
@@ -1844,6 +1849,7 @@ document.getElementById('retry').onclick=()=>{
  document.getElementById('objectivePanel').style.display='none';
  document.getElementById('objectiveBtn').style.display='none';
  document.getElementById('interactBtn').style.display='none';
+ document.getElementById('crouchBtn').style.display='none';
  document.getElementById('balanceUI').style.display='none';
 };
 updateClueToggle();
