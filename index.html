@@ -2453,9 +2453,9 @@ function render(){
     const wx=px+Math.cos(ra)*ceilingDepth;
     const wy=py+Math.sin(ra)*ceilingDepth;
 
-    // Square acoustic ceiling panels aligned to the same 1-world-unit
-    // grid as the walls. Thin seams create the clean repeating grid.
-    const tileSize=1;
+    // Denser acoustic ceiling panels: twice as many grid cells across
+    // the same world space, while keeping fixtures centered in their cells.
+    const tileSize=.5;
     const tileX=Math.floor(wx/tileSize);
     const tileY=Math.floor(wy/tileSize);
     const localX=wx-tileX;
