@@ -2990,6 +2990,66 @@ function render(){
 }
 
 
+// TV / remote menu navigation.
+// Many TV browsers send the remote's D-pad as Arrow keys and its OK button as
+// Enter or Space. Keep this separate from gameplay controls.
+let tvMenuItems=[];
+let tvMenuIndex=0;
+function refreshTVMenuFocus(){
+ const items=visibleMenuItems();
+ if(!items.length)return;
+ tvMenuItems=items;
+ if(tvMenuIndex>=items.length)tvMenuIndex=0;
+ items[tvMenuIndex].focus();
+ items[tvMenuIndex].scrollIntoView({block:'nearest'});
+}
+function handleTVMenuKey(e){
+ const start=document.getElementById('startScreen');
+ if(start.style.display==='none')return false;
+ const items=visibleMenuItems();
+ if(!items.length)return false;
+ if(items!==tvMenuItems){
+  tvMenuItems=items;
+  tvMenuIndex=0;
+ }
+ const k=e.key;
+ if(k==='ArrowUp'||k==='ArrowLeft'){
+  tvMenuIndex=(tvMenuIndex-1+items.length)%items.length;
+  refreshTVMenuFocus();
+  e.preventDefault();
+  e.stopPropagation();
+  return true;
+ }
+ if(k==='ArrowDown'||k==='ArrowRight'){
+  tvMenuIndex=(tvMenuIndex+1)%items.length;
+  refreshTVMenuFocus();
+  e.preventDefault();
+  e.stopPropagation();
+  return true;
+ }
+ if(k==='Enter'||k===' '||k==='NumpadEnter'){
+  items[tvMenuIndex].click();
+  setTimeout(refreshTVMenuFocus,30);
+  e.preventDefault();
+  e.stopPropagation();
+  return true;
+ }
+ return false;
+}
+document.addEventListener('keydown',handleTVMenuKey,true);
+document.addEventListener('focusin',e=>{
+ if(document.getElementById('startScreen').style.display!=='none' &&
+    e.target.matches('.mode,.diff,#backModes,#backLevelsFromModes')){
+  const items=visibleMenuItems();
+  const i=items.indexOf(e.target);
+  if(i>=0){tvMenuItems=items;tvMenuIndex=i;}
+ }
+});
+setTimeout(()=>{
+ const first=visibleMenuItems()[0];
+ if(first)first.focus();
+},0);
+
 addEventListener('keydown',e=>{
  const k=e.key.toLowerCase();
  if(k==='f'&&originalMode){queueOriginalInteract();e.preventDefault();return}
