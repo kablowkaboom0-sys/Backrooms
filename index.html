@@ -351,7 +351,7 @@ addEventListener('gamepaddisconnected',e=>{
 function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
 const ROBLOX_MAP_SCALE=6;
 const ROBLOX_MAP_W=1080, ROBLOX_MAP_H=798;
-const ROBLOX_TRACE_B64="__ROBLOX_B64__";
+const ROBLOX_TRACE_B64="901tSIBDXLhwWxX3CsJ4ytm4RwMg7eCJKMb72cYJQ81/esbZpZ2GMXI5xjeUwzFMd6kED9iWOdmGJaMxktmlnYYsuqzBCPkd9d6lb7q+h/SrxHDWTvDcGRu+EDN0g6jOIA4xkv0eakOIx4Q9gTDW0PKPpRtNBtDO4IRPDVLe4yb+x7jG8SQFeN1xjhoGt4hRjwqrUkRjPqTc06soAfisFfMutF4Vj2AATHK+tAS5FmJsFnVFEihSqfFDBJbMczKuWFGGP/scw6HcoyDuSL3pahE87MhGJoaTXrlShlhyBhIuUMMi65FWwqEdhg6VAxDp7FmBbqo3BDhGIYq+70Ru92ripFqG3o7wjBE9Fo6jVXX7wXNeH8MQxdj1Yhffvm+ej8ThjMjDEsW"+"__CHUNK1__"+"__CHUNK2__"+"__CHUNK3__";
 
 async function makeRobloxBackroomsMap(){
  const bytes=Uint8Array.from(atob(ROBLOX_TRACE_B64),c=>c.charCodeAt(0));
