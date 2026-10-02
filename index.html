@@ -2670,11 +2670,17 @@ function render(){
 
     // Fixtures are part of the ceiling plane, so they retain correct
     // perspective at every distance. Each one is centered in its tile.
-    const fixtureCell=ceilingLightCells.has(tileX+','+tileY);
-    // The light fills exactly one ceiling tile: same square footprint as the tile.
-    const fixtureX=localX>=0&&localX<1;
-    const fixtureY=localY>=0&&localY<1;
-    const fixtureEdge=localX<.035||localX>.965||localY<.035||localY>.965;
+    // Light cells are stored in normal 1x1 world-cell coordinates.
+    // Do not use the denser .5 ceiling-panel coordinates for the light lookup:
+    // doing so makes distant fixtures flicker, disappear, or appear offset.
+    const worldCellX=Math.floor(wx);
+    const worldCellY=Math.floor(wy);
+    const fixtureCell=ceilingLightCells.has(worldCellX+','+worldCellY);
+    const fixtureLocalX=wx-worldCellX;
+    const fixtureLocalY=wy-worldCellY;
+    const fixtureX=fixtureLocalX>=0&&fixtureLocalX<1;
+    const fixtureY=fixtureLocalY>=0&&fixtureLocalY<1;
+    const fixtureEdge=fixtureLocalX<.035||fixtureLocalX>.965||fixtureLocalY<.035||fixtureLocalY>.965;
     const isFixture=fixtureCell&&fixtureX&&fixtureY;
 
     let cr=190+tileNoise+seam;
