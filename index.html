@@ -91,8 +91,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <h1>BACKROOMS</h1>
 <div class="sub" id="startSub">CHOOSE A LEVEL</div>
 <div id="modeChoices">
-<a class="mode" href="?tv=level0" data-mode="level0" role="button">LEVEL 0</a>
-<a class="mode" href="?tv=pool" data-mode="pool" role="button">POOL ROOMS</a>
+<a class="mode" href="tv-level0.html" data-mode="level0" role="button">LEVEL 0</a>
+<a class="mode" href="tv-pool.html" data-mode="pool" role="button">POOL ROOMS</a>
 </div>
 <div id="horrorChoices">
 <div class="sub">CHOOSE GAME MODE</div>
@@ -3308,6 +3308,8 @@ function applyTVMenuHash(){
 }
 addEventListener('hashchange',applyTVMenuHash);
 document.querySelectorAll('#modeChoices .mode').forEach(btn=>btn.onclick=e=>{
+ // BrowseHere TV mode uses real separate HTML pages. Let the native link navigate.
+ if(btn.dataset.mode==='level0'||btn.dataset.mode==='pool')return;
  e.preventDefault();
  const nextHash='#'+btn.dataset.mode;
  if(location.hash!==nextHash){location.hash=nextHash;return;}
@@ -3472,7 +3474,27 @@ document.getElementById('retry').onclick=()=>{
  crouching=false;crouchHeld=false;crouchToggle=false;updateCrouchButton();
 };
 updateClueToggle();
-applyTVQuery();
+// BrowseHere fallback: final TV selections store the requested game in localStorage,
+// then return to this real game page. This avoids query/hash navigation entirely.
+function applyTVStoredStart(){
+ let s=null;
+ try{s=localStorage.getItem('backroomsStart');}catch(e){return false;}
+ if(!s)return false;
+ try{localStorage.removeItem('backroomsStart');}catch(e){}
+ if(/^level0-(peaceful|horror)-(easy|medium|hard)$/.test(s)){
+  const p=s.split('-'); gameMode='level0';playMode=p[1];difficultySize={easy:21,medium:31,hard:41}[p[2]];
+  originalMode=false;poolOriginalMode=false;robloxMode=false;startGame(difficultySize);return true;
+ }
+ if(/^pool-(peaceful|horror)-(easy|medium|hard)$/.test(s)){
+  const p=s.split('-'); gameMode='pool';playMode=p[1];difficultySize={easy:21,medium:31,hard:41}[p[2]];
+  originalMode=false;poolOriginalMode=false;robloxMode=false;startGame(difficultySize);return true;
+ }
+ if(s==='level0-original'){gameMode='level0';originalMode=true;poolOriginalMode=false;robloxMode=false;startGame(75);return true;}
+ if(s==='level0-roblox'){gameMode='level0';originalMode=false;poolOriginalMode=false;robloxMode=true;startGame(75);return true;}
+ if(s==='pool-original'){gameMode='pool';originalMode=false;poolOriginalMode=true;robloxMode=false;startGame(75);return true;}
+ return false;
+}
+if(!applyTVStoredStart())applyTVQuery();
 document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
 function setActiveButtons(selector,attr,value){
  document.querySelectorAll(selector).forEach(b=>b.classList.toggle('active',b.dataset[attr]===value));
