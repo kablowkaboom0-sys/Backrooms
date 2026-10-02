@@ -98,7 +98,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v31</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v32</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div><div id="balanceUI"><div class="balanceLabel">BALANCE</div><div class="balanceBar"><div id="balanceFill"></div></div><div id="balanceText">CENTER</div></div><div id="originalObjective"></div>
 <button id="objectiveBtn">OBJECTIVE</button><button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -795,44 +795,42 @@ function rebuildLevel0CeilingLights(){
  ceilingLights=[];
  if(gameMode!=="level0"||!map)return;
 
- // Level 0 ceiling uses a regular 3x3 panel grid. Each fluorescent
- // fixture sits exactly at the CENTER of its 3x3 ceiling panel.
+ // Level 0 reference-style ceiling:
+ // small square ceiling tiles form a continuous grid, while long
+ // rectangular fluorescent fixtures appear only every few tiles.
  const occupied=new Set();
  const key=(x,y)=>x+','+y;
  const add=(x,y)=>{
-  if(x<1||y<1||x>=MW-1||y>=MH-1||map[y]?.[x]!==0)return;
+  if(x<0||y<0||x>=MW||y>=MH||map[y]?.[x]!==0)return;
   const k=key(x,y);
   if(occupied.has(k))return;
   occupied.add(k);
   ceilingLights.push({x:x+.5,y:y+.5});
  };
 
- // World-space 3x3 grid. The same grid remains fixed while the player
- // moves, so the light always stays centered in its ceiling panel.
- for(let y=2;y<MH-2;y+=3){
-  for(let x=2;x<MW-2;x+=3){
+ // Put one fixture at the CENTER of selected 3x3 ceiling-tile groups.
+ // This gives the regular rhythm seen in the reference image without
+ // covering the whole ceiling in bright squares.
+ for(let y=0;y<MH;y+=3){
+  for(let x=0;x<MW;x+=3){
+   const cx=x+1,cy=y+1;
+   if(cx>=MW-1||cy>=MH-1||map[cy]?.[cx]!==0)continue;
    let open=0;
    for(let oy=0;oy<3;oy++)for(let ox=0;ox<3;ox++){
     if(map[y+oy]?.[x+ox]===0)open++;
    }
-   // Require the panel center to be open and most of the panel to be
-   // usable ceiling space, preventing lights from being clipped by walls.
-   if(map[y+1]?.[x+1]===0 && open>=6)add(x+1,y+1);
+   if(open>=6)add(cx,cy);
   }
  }
 
- // Fill only aligned 3x3 panel centers where a wall interrupted the first
- // pass. This preserves the centered 3x3 rhythm instead of scattering lights.
- for(let y=2;y<MH-2;y+=3){
-  for(let x=2;x<MW-2;x+=3){
-   const cx=x+1,cy=y+1;
-   if(map[cy]?.[cx]!==0)continue;
-   if(occupied.has(key(cx,cy)))continue;
-   const around=[
-    map[cy]?.[cx+1]===0,map[cy+1]?.[cx]===0,
-    map[cy]?.[cx-1]===0,map[cy-1]?.[cx]===0
-   ].filter(Boolean).length;
-   if(around>=3)add(cx,cy);
+ // On long corridors, keep the same 3-tile spacing and place a centered
+ // fixture where the first pass was blocked by a wall.
+ for(let y=1;y<MH-1;y++){
+  for(let x=1;x<MW-1;x++){
+   if(map[y]?.[x]!==0||occupied.has(key(x,y)))continue;
+   const lr=map[y][x-1]===0&&map[y][x+1]===0;
+   const ud=map[y-1][x]===0&&map[y+1][x]===0;
+   if((lr||ud)&&x%3===1&&y%3===1)add(x,y);
   }
  }
 }
@@ -1390,7 +1388,8 @@ function drawCeilingLightsSafe(){
  if(gameMode==="pool"||!ceilingLights.length)return;
  const hz=H*.51;
  const tanHalf=Math.tan(currentFOV/2);
- const half=.34;
+ const halfW=.46;   // long side of the fluorescent fixture
+ const halfD=.16;   // short side
  const panelZ=.94;
 
  function project(wx,wy){
@@ -1404,61 +1403,54 @@ function drawCeilingLightsSafe(){
   return {x:sx,y:sy,d:forward};
  }
 
- for(const light of ceilingLights){
-  // Each fixture is anchored to the center of its world-space ceiling panel.
-  const tileCenterX=Math.floor(light.x)+.5;
-  const tileCenterY=Math.floor(light.y)+.5;
-
-  // Four actual world-space corners of the square panel.
-  const corners=[
-   project(tileCenterX-half,tileCenterY-half),
-   project(tileCenterX+half,tileCenterY-half),
-   project(tileCenterX+half,tileCenterY+half),
-   project(tileCenterX-half,tileCenterY+half)
+ function quad(cx,cy,w,d){
+  return [
+   project(cx-w,cy-d),project(cx+w,cy-d),
+   project(cx+w,cy+d),project(cx-w,cy+d)
   ];
-  if(corners.some(p=>!p))continue;
-
-  const center=project(tileCenterX,tileCenterY);
-  if(!center||center.d>RENDER_DISTANCE)continue;
-
+ }
+ function insideQuad(corners,x,y){
+  let sign=0;
+  for(let i=0;i<4;i++){
+   const p=corners[i],q=corners[(i+1)%4];
+   const cross=(q.x-p.x)*(y-p.y)-(q.y-p.y)*(x-p.x);
+   if(Math.abs(cross)<.01)continue;
+   const s=cross>0?1:-1;
+   if(!sign)sign=s;
+   else if(s!==sign)return false;
+  }
+  return true;
+ }
+ function paintQuad(corners,fill){
+  if(corners.some(p=>!p))return;
+  const center={
+   x:(corners[0].x+corners[1].x+corners[2].x+corners[3].x)/4,
+   y:(corners[0].y+corners[1].y+corners[2].y+corners[3].y)/4,
+   d:(corners[0].d+corners[1].d+corners[2].d+corners[3].d)/4
+  };
+  if(center.d>RENDER_DISTANCE)return;
   const minX=Math.max(0,Math.floor(Math.min(...corners.map(p=>p.x))));
   const maxX=Math.min(W-1,Math.ceil(Math.max(...corners.map(p=>p.x))));
   const minY=Math.max(0,Math.floor(Math.min(...corners.map(p=>p.y))));
   const maxY=Math.min(Math.floor(hz-1),Math.ceil(Math.max(...corners.map(p=>p.y))));
-  if(minX>maxX||minY>maxY)continue;
-
-  function inside(px2,py2){
-   let sign=0;
-   for(let i=0;i<4;i++){
-    const p=corners[i],q=corners[(i+1)%4];
-    const cross=(q.x-p.x)*(py2-p.y)-(q.y-p.y)*(px2-p.x);
-    if(Math.abs(cross)<.01)continue;
-    const s=cross>0?1:-1;
-    if(!sign)sign=s;
-    else if(s!==sign)return false;
-   }
-   return true;
-  }
+  if(minX>maxX||minY>maxY)return;
 
   for(let y=minY;y<=maxY;y++){
    for(let x=minX;x<=maxX;x++){
-    if(!inside(x+.5,y+.5))continue;
-    // The panel is on the ceiling plane; don't paint it through a nearer wall.
+    if(!insideQuad(corners,x+.5,y+.5))continue;
     if(depthBuffer[x]<center.d-.18)continue;
     const i=(y*W+x)*4;
-    const edge=Math.min(
-     Math.abs(x-corners[0].x),
-     Math.abs(x-corners[1].x),
-     Math.abs(y-corners[0].y),
-     Math.abs(y-corners[2].y)
-    );
-    if(edge<1.1){
-     pix[i]=215;pix[i+1]=212;pix[i+2]=190;
-    }else{
-     pix[i]=255;pix[i+1]=253;pix[i+2]=232;
-    }
+    pix[i]=fill[0];pix[i+1]=fill[1];pix[i+2]=fill[2];
    }
   }
+ }
+
+ for(const light of ceilingLights){
+  const cx=Math.floor(light.x)+.5;
+  const cy=Math.floor(light.y)+.5;
+  // Thin dark/recessed border followed by a bright rectangular tube.
+  paintQuad(quad(cx,cy,halfW+.045,halfD+.045),[155,153,137]);
+  paintQuad(quad(cx,cy,halfW,halfD),[255,254,236]);
  }
 }
 
@@ -1633,13 +1625,13 @@ function render(){
 
     // Larger acoustic ceiling panels, closer to a real Level 0 ceiling.
     // Panels are 2x2 world units, with seams aligned to world space.
-    const tileSize=2;
+    const tileSize=1;
     const tileX=Math.floor(wx/tileSize);
     const tileY=Math.floor(wy/tileSize);
     const localX=(wx/tileSize)-tileX;
     const localY=(wy/tileSize)-tileY;
-    const seam=(localX<.035||localY<.035)?-28:0;
-    const tileNoise=hash(tileX*31,tileY*47)*5-2.5;
+    const seam=(localX<.028||localY<.028)?-24:0;
+    const tileNoise=hash(tileX*31,tileY*47)*4-2;
     const light=fade*fog;
 
     setPix((y*W+x)*4,
