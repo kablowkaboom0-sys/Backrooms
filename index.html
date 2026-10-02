@@ -348,6 +348,123 @@ function makeOriginalMap(){
   while(out.length<152)out.push(1);
   return out;
  });
+
+ // Detail pass for Original Mode: the reference layout is intentionally
+ // dense and irregular. Add many interior wall runs and pillar clusters with
+ // different widths/heights instead of leaving large, repetitive open boxes.
+ // The existing RLE remains the base layout; this pass adds the missing
+ // architectural complexity while preserving the important routes.
+ const detailShapes=[
+  // left / pillar-room structures
+  [18,43,4,2],[26,47,2,5],[34,43,7,1],[43,48,2,7],[20,57,8,1],
+  [31,54,3,3],[39,59,6,2],[48,52,1,8],[16,64,7,1],[27,63,2,4],
+  [36,65,5,1],[45,61,3,3],
+  // upper central rooms around the ladder area
+  [57,9,8,1],[69,7,2,5],[76,12,5,2],[86,8,7,1],[96,11,2,6],
+  [102,17,5,2],[60,22,3,7],[68,26,8,1],[80,20,2,5],[88,25,5,2],
+  [97,28,2,7],[104,33,6,1],[57,34,7,2],[70,37,2,5],[82,34,6,2],
+  [92,38,3,4],[101,40,7,1],
+  // central maze-like rooms
+  [54,45,6,2],[63,49,2,6],[70,44,5,1],[77,47,2,8],[84,43,8,1],
+  [94,46,1,7],[100,50,6,2],[58,56,4,1],[66,58,7,2],[76,57,2,6],
+  [85,53,5,1],[91,57,3,4],[99,60,7,1],[108,45,2,6],[112,52,6,2],
+  [109,61,5,1],[116,64,2,6],[103,68,8,1],
+  // lower-left / lower-central density
+  [8,76,9,1],[20,72,2,7],[28,75,6,2],[38,72,3,5],[45,78,8,1],
+  [56,73,2,6],[63,76,7,2],[74,72,2,5],[82,77,9,1],[94,73,3,6],
+  [101,79,6,2],[112,74,2,7],[119,80,7,1],[31,84,5,2],[43,87,2,6],
+  [52,84,7,1],[66,87,3,4],[76,84,5,2],[88,89,2,7],[98,86,8,1],
+  [108,91,4,2],[117,87,2,5],[124,92,5,1],
+  // lower section with mixed long/short walls
+  [12,96,2,8],[20,101,7,1],[31,95,5,2],[40,99,2,7],[49,94,9,1],
+  [61,98,3,3],[69,94,6,2],[79,101,2,6],[87,96,8,1],[99,100,4,2],
+  [108,96,2,8],[116,103,7,1],[126,99,3,5],[21,111,8,1],[33,106,2,6],
+  [43,112,5,2],[54,107,7,1],[66,113,2,6],[75,108,5,2],[85,115,8,1],
+  [98,109,3,5],[107,114,7,1],[119,109,2,7],[128,116,6,1]
+ ];
+
+ const protectedPoints=[[124,59],[84,24],[76,125],[128,59]];
+ const inside=(x,y)=>x>1&&y>1&&x<150&&y<125;
+ const nearProtected=(x,y,w,h)=>{
+  for(const [ax,ay] of protectedPoints){
+   if(ax>=x-3&&ax<=x+w+2&&ay>=y-3&&ay<=y+h+2)return true;
+  }
+  return false;
+ };
+ const reachable=(sx,sy,tx,ty)=>{
+  const nearest=(x,y)=>{
+   if(m[y]?.[x]===0)return [x,y];
+   for(let r=1;r<=5;r++){
+    for(let yy=Math.max(1,y-r);yy<=Math.min(125,y+r);yy++){
+     for(let xx=Math.max(1,x-r);xx<=Math.min(150,x+r);xx++){
+      if(m[yy]?.[xx]===0)return [xx,yy];
+     }
+    }
+   }
+   return null;
+  };
+  const a=nearest(sx,sy),b=nearest(tx,ty);
+  if(!a||!b)return false;
+  const seen=new Uint8Array(152*127);
+  const qx=new Int16Array(152*127),qy=new Int16Array(152*127);
+  let head=0,tail=0;
+  qx[tail]=a[0];qy[tail++]=a[1];seen[a[1]*152+a[0]]=1;
+  while(head<tail){
+   const x=qx[head],y=qy[head++];
+   if(x===b[0]&&y===b[1])return true;
+   const ns=[[x+1,y],[x-1,y],[x,y+1],[x,y-1]];
+   for(const [nx,ny] of ns){
+    if(nx<0||ny<0||nx>=152||ny>=127||seen[ny*152+nx]||m[ny][nx]!==0)continue;
+    seen[ny*152+nx]=1;qx[tail]=nx;qy[tail++]=ny;
+   }
+  }
+  return false;
+ };
+
+ for(const shape of detailShapes){
+  const [x,y,w,h]=shape;
+  if(!inside(x,y)||x+w>=151||y+h>=126||nearProtected(x,y,w,h))continue;
+  let clear=true;
+  for(let yy=y;yy<y+h&&clear;yy++)for(let xx=x;xx<x+w;xx++){
+   if(m[yy]?.[xx]!==0){clear=false;break;}
+  }
+  if(!clear)continue;
+
+  // Require the four important areas to remain connected before committing
+  // a new structure. This lets us add density without accidentally sealing
+  // the ladder, main route, or lower exit.
+  for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)m[yy][xx]=1;
+  const ok=
+    reachable(124,59,84,24)&&
+    reachable(124,59,76,125);
+  if(!ok){
+   for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)m[yy][xx]=0;
+  }
+ }
+
+ // A few freestanding pillar clusters in the broad rooms. Their dimensions
+ // deliberately vary so the space does not read as a repeated grid.
+ const pillars=[
+  [52,46,2,3],[55,58,3,2],[61,67,2,2],[72,62,2,3],[87,62,3,2],
+  [103,55,2,3],[113,57,3,3],[22,68,2,2],[34,70,3,2],[47,69,2,3],
+  [58,82,2,2],[71,81,3,3],[91,82,2,2],[105,84,3,2],[121,72,2,3],
+  [28,91,2,3],[57,92,3,2],[73,91,2,3],[92,93,3,2],[114,94,2,2],
+  [17,108,3,2],[37,104,2,3],[57,103,2,2],[72,106,3,2],[94,105,2,3],
+  [111,108,3,2],[125,107,2,3]
+ ];
+ for(const [x,y,w,h] of pillars){
+  if(nearProtected(x,y,w,h)||x+w>=151||y+h>=126)continue;
+  let clear=true;
+  for(let yy=y;yy<y+h&&clear;yy++)for(let xx=x;xx<x+w;xx++){
+   if(m[yy]?.[xx]!==0){clear=false;break;}
+  }
+  if(!clear)continue;
+  for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)m[yy][xx]=1;
+  if(!reachable(124,59,84,24)||!reachable(124,59,76,125)){
+   for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)m[yy][xx]=0;
+  }
+ }
+
  MW=152; MH=127;
  // Use the actual Original Mode spawn from the reference-map layout.
  startCell={x:124,y:59};
