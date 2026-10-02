@@ -202,6 +202,7 @@ let poolRoomType=[];
 let poolFloorHeight=[];
 let poolWaterDepth=[];
 let ceilingLights=[];
+let ceilingLightCells=new Set();
 const ENTITY_SPEED=1.075; // Easy mode: original entity speed (half the player's normal speed).
 const ENTITY_DAMAGE=20;
 const ENTITY_DAMAGE_COOLDOWN=1000;
@@ -793,11 +794,11 @@ function findExit(){
 }
 function rebuildLevel0CeilingLights(){
  ceilingLights=[];
+ ceilingLightCells=new Set();
  if(gameMode!=="level0"||!map)return;
 
- // Keep every Level 0 mode on one consistent world-space drop-ceiling grid.
- // Fixtures are centered inside 3x3 groups of ceiling panels, matching the
- // repeating fluorescent-light rhythm of classic Level 0.
+ // Regular world-space ceiling layout: a fluorescent fixture is centered
+ // inside selected 3x3 groups of square acoustic panels.
  const occupied=new Set();
  const key=(x,y)=>x+','+y;
  const add=(x,y)=>{
@@ -805,13 +806,14 @@ function rebuildLevel0CeilingLights(){
   const k=key(x,y);
   if(occupied.has(k))return;
   occupied.add(k);
+  ceilingLightCells.add(k);
   ceilingLights.push({x:x+.5,y:y+.5});
  };
 
  for(let y=1;y<MH-1;y+=3){
   for(let x=1;x<MW-1;x+=3){
    const cx=x+1,cy=y+1;
-   if(cx>=MW-1||cy>=MH-1||map[cy]?.[cx]!==0)continue;
+   if(map[cy]?.[cx]!==0)continue;
    let open=0;
    for(let oy=0;oy<3;oy++)for(let ox=0;ox<3;ox++){
     if(map[y+oy]?.[x+ox]===0)open++;
@@ -820,8 +822,8 @@ function rebuildLevel0CeilingLights(){
   }
  }
 
- // Preserve straight rows through long corridors when a full 3x3 block
- // cannot fit because a wall interrupts the surrounding panels.
+ // Continue the same 3-cell rhythm through long corridors where a wall
+ // prevents a complete 3x3 group from fitting.
  for(let y=2;y<MH-2;y++){
   for(let x=2;x<MW-2;x++){
    if(x%3!==2||y%3!==2||map[y]?.[x]!==0||occupied.has(key(x,y)))continue;
@@ -1388,75 +1390,9 @@ function entitySilhouette(gx,gy,scale){
  rect(2,13,1,4);rect(8,13,1,4); // hanging arms
 }
 function drawCeilingLightsSafe(){
- if(gameMode==="pool"||!ceilingLights.length)return;
- const hz=H*.51;
- const tanHalf=Math.tan(currentFOV/2);
- const halfW=.43;   // long side of the fluorescent fixture
- const halfD=.18;   // short side
- const panelZ=.94;
-
- function project(wx,wy){
-  const dx=wx-px,dy=wy-py;
-  const forward=dx*Math.cos(pa)+dy*Math.sin(pa);
-  const lateral=-dx*Math.sin(pa)+dy*Math.cos(pa);
-  if(forward<=.25)return null;
-  const angle=Math.atan2(lateral,forward);
-  const sx=W/2+(Math.tan(angle)/tanHalf)*(W/2);
-  const sy=hz-(panelZ/forward)*(H*.46);
-  return {x:sx,y:sy,d:forward};
- }
-
- function quad(cx,cy,w,d){
-  return [
-   project(cx-w,cy-d),project(cx+w,cy-d),
-   project(cx+w,cy+d),project(cx-w,cy+d)
-  ];
- }
- function insideQuad(corners,x,y){
-  let sign=0;
-  for(let i=0;i<4;i++){
-   const p=corners[i],q=corners[(i+1)%4];
-   const cross=(q.x-p.x)*(y-p.y)-(q.y-p.y)*(x-p.x);
-   if(Math.abs(cross)<.01)continue;
-   const s=cross>0?1:-1;
-   if(!sign)sign=s;
-   else if(s!==sign)return false;
-  }
-  return true;
- }
- function paintQuad(corners,fill){
-  if(corners.some(p=>!p))return;
-  const center={
-   x:(corners[0].x+corners[1].x+corners[2].x+corners[3].x)/4,
-   y:(corners[0].y+corners[1].y+corners[2].y+corners[3].y)/4,
-   d:(corners[0].d+corners[1].d+corners[2].d+corners[3].d)/4
-  };
-  if(center.d>RENDER_DISTANCE)return;
-  const minX=Math.max(0,Math.floor(Math.min(...corners.map(p=>p.x))));
-  const maxX=Math.min(W-1,Math.ceil(Math.max(...corners.map(p=>p.x))));
-  const minY=Math.max(0,Math.floor(Math.min(...corners.map(p=>p.y))));
-  const maxY=Math.min(Math.floor(hz-1),Math.ceil(Math.max(...corners.map(p=>p.y))));
-  if(minX>maxX||minY>maxY)return;
-
-  for(let y=minY;y<=maxY;y++){
-   for(let x=minX;x<=maxX;x++){
-    if(!insideQuad(corners,x+.5,y+.5))continue;
-    if(depthBuffer[x]<center.d-.18)continue;
-    const i=(y*W+x)*4;
-    pix[i]=fill[0];pix[i+1]=fill[1];pix[i+2]=fill[2];
-   }
-  }
- }
-
- for(const light of ceilingLights){
-  const cx=Math.floor(light.x)+.5;
-  const cy=Math.floor(light.y)+.5;
-  // Thin dark/recessed border followed by a bright rectangular tube.
-  paintQuad(quad(cx,cy,halfW+.045,halfD+.045),[155,153,137]);
-  paintQuad(quad(cx,cy,halfW,halfD),[255,254,236]);
- }
+ // Fixtures are rendered directly while sampling the ceiling plane in render().
+ // Keeping this hook avoids changing the rest of the render pipeline.
 }
-
 const level0EntitySource=new Image();
 const level0EntityCanvas=document.createElement('canvas');
 let level0EntityReady=false;
@@ -1626,24 +1562,41 @@ function render(){
     const wx=px+Math.cos(ra)*ceilingDepth;
     const wy=py+Math.sin(ra)*ceilingDepth;
 
-    // Suspended mineral-fiber panels are slightly rectangular, with
-    // thin dark seams that form a continuous drop-ceiling grid.
-    const tileW=1.27;
-    const tileD=1.14;
-    const tileX=Math.floor(wx/tileW);
-    const tileY=Math.floor(wy/tileD);
-    const localX=(wx/tileW)-tileX;
-    const localY=(wy/tileD)-tileY;
-    const seamX=localX<.035||localX>.965;
-    const seamY=localY<.035||localY>.965;
-    const seam=(seamX||seamY)?-22:0;
-    const tileNoise=hash(tileX*31,tileY*47)*5-2.5;
-    const light=fade*fog;
+    // Square acoustic ceiling panels aligned to the same 1-world-unit
+    // grid as the walls. Thin seams create the clean repeating grid.
+    const tileSize=1;
+    const tileX=Math.floor(wx/tileSize);
+    const tileY=Math.floor(wy/tileSize);
+    const localX=wx-tileX;
+    const localY=wy-tileY;
 
-    setPix((y*W+x)*4,
-      (205+tileNoise+seam)*light,
-      (202+tileNoise+seam*.82)*light,
-      (188+tileNoise+seam*.55)*light);
+    const seamX=localX<.025||localX>.975;
+    const seamY=localY<.025||localY>.975;
+    const seam=(seamX||seamY)?-18:0;
+    const tileNoise=hash(tileX*31,tileY*47)*3-1.5;
+
+    // Fixtures are part of the ceiling plane, so they retain correct
+    // perspective at every distance. Each one is centered in its tile.
+    const fixtureCell=ceilingLightCells.has(tileX+','+tileY);
+    const fixtureX=Math.abs(localX-.5)<.32;
+    const fixtureY=Math.abs(localY-.5)<.14;
+    const fixtureEdge=Math.abs(localX-.5)>.29||Math.abs(localY-.5)>.11;
+    const isFixture=fixtureCell&&fixtureX&&fixtureY;
+
+    let cr=190+tileNoise+seam;
+    let cg=181+tileNoise+seam*.82;
+    let cb=148+tileNoise+seam*.55;
+
+    if(isFixture){
+     if(fixtureEdge){
+      cr=151;cg=145;cb=122;
+     }else{
+      cr=255;cg=250;cb=218;
+     }
+    }
+
+    const light=fade*fog;
+    setPix((y*W+x)*4,cr*light,cg*light,cb*light);
    }
   }else{
    // Pool Rooms has no Level 0 carpet fallback.
