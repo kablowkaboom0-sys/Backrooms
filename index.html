@@ -384,6 +384,7 @@ function setupOriginalMechanics(m){
  originalBalance=0;
  originalLeanInput=0;
  originalPitCells=new Set();
+ originalPitLedgeCells=new Set();
 
  const inZone=(x,y,z)=>x>=z.x1&&x<=z.x2&&y>=z.y1&&y<=z.y2;
  const candidates=[];
@@ -514,8 +515,8 @@ function originalDoorLockedAt(x,y){
 function originalPitActive(){
  if(!originalMode||!originalDoorOpen||originalLowerRoute||originalPitCrossed)return false;
  const x=Math.floor(px),y=Math.floor(py);
- // The Pitfalls are the large checkerboard room immediately left of the spawn.
- // Balance only applies while actually standing on one of the thin ledges.
+ // The Pitfalls are a void crossed by the narrow ledge route from the reference.
+ // Balance only applies while actually standing on one of those thin ledges.
  return originalPitLedgeAt(x,y);
 }
 function originalPitAt(x,y){
@@ -561,8 +562,8 @@ function updateOriginalObjective(){
   text='KEY FOUND • UNLOCK THE DOOR';
   currentText='Find the wooden door and press F / INTERACT to unlock it.';
  }else if(!originalPitCrossed&&!originalLowerRoute){
-  text='DOOR OPEN • CROSS THE PITFALLS';
-  currentText='Cross the Pitfalls. Use Q/E to keep your balance. Reach the vent on the far side.';
+  text='DOOR OPEN • CROSS THE THIN LEDGES';
+  currentText='Walk across the thin ledges over the Pitfalls. Use Q/E to keep your balance and reach Exit 2 on the right.';
  }else if(originalLowerRoute){
   text='LOWER ROUTE • FOLLOW THE ARROWS';
   currentText='Use the wall arrows through the lower level to reach the alternate vent.';
