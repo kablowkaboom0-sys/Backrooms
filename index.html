@@ -45,7 +45,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #startScreen .sub{opacity:.5;letter-spacing:3px;margin-bottom:28px}
 #modeChoices,#horrorChoices,#difficultyChoices{display:flex;flex-direction:column;align-items:center}
 #horrorChoices,#difficultyChoices{display:none}
-.mode{width:250px;margin:8px;padding:14px;background:#17120c;color:#ddd;border:1px solid #777;font:16px monospace;letter-spacing:2px}
+.mode{display:block;text-decoration:none;box-sizing:border-box;width:250px;margin:8px;padding:14px;background:#17120c;color:#ddd;border:1px solid #777;font:16px monospace;letter-spacing:2px}
 .mode:hover{background:#272016;border-color:#aaa}
 .mode:focus,.diff:focus,#backModes:focus,#backLevelsFromModes:focus{
  outline:3px solid #fff;
@@ -54,7 +54,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
  border-color:#fff;
 }
 #backModes,#backLevelsFromModes{margin-top:14px;padding:8px 18px;background:#111;color:#bbb;border:1px solid #666;font:12px monospace}
-.diff{width:220px;margin:7px;padding:12px;background:#17120c;color:#ddd;border:1px solid #666;font:15px monospace;letter-spacing:2px}
+.diff{display:block;text-decoration:none;box-sizing:border-box;width:220px;margin:7px;padding:12px;background:#17120c;color:#ddd;border:1px solid #666;font:15px monospace;letter-spacing:2px}
 .diff:hover{background:#272016;border-color:#aaa}
 #hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);opacity:.45;text-align:center}
 #cross{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border:1px solid rgba(255,255,255,.3);box-sizing:border-box}
@@ -91,23 +91,23 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <h1>BACKROOMS</h1>
 <div class="sub" id="startSub">CHOOSE A LEVEL</div>
 <div id="modeChoices">
-<button class="mode" data-mode="level0">LEVEL 0</button>
-<button class="mode" data-mode="pool">POOL ROOMS</button>
+<a class="mode" href="#level0" data-mode="level0" role="button">LEVEL 0</a>
+<a class="mode" href="#pool" data-mode="pool" role="button">POOL ROOMS</a>
 </div>
 <div id="horrorChoices">
 <div class="sub">CHOOSE GAME MODE</div>
-<button class="mode" data-playmode="peaceful">PEACEFUL MODE</button>
-<button class="mode" data-playmode="horror">HORROR MODE</button>
-<button id="backLevelsFromModes">BACK TO LEVELS</button>
+<a class="mode" href="#peaceful" data-playmode="peaceful" role="button">PEACEFUL MODE</a>
+<a class="mode" href="#horror" data-playmode="horror" role="button">HORROR MODE</a>
+<a id="backLevelsFromModes" href="#levels" role="button">BACK TO LEVELS</a>
 </div>
 <div id="difficultyChoices">
-<button class="diff" data-size="21">EASY</button>
-<button class="diff" data-size="31">MEDIUM</button>
-<button class="diff" data-size="41">HARD</button>
-<button class="diff" id="originalModeBtn" data-original="1">LEVEL 0 ORIGINAL MODE</button>
-<button class="diff" id="robloxModeBtn" data-roblox="1">ROBLOX BACKROOMS</button>
-<button class="diff" id="poolOriginalModeBtn" data-pool-original="1">POOL ROOMS ORIGINAL MODE</button>
-<button id="backModes">BACK TO GAME MODE</button>
+<a class="diff" href="#easy" data-size="21" role="button">EASY</a>
+<a class="diff" href="#medium" data-size="31" role="button">MEDIUM</a>
+<a class="diff" href="#hard" data-size="41" role="button">HARD</a>
+<a class="diff" id="originalModeBtn" href="#original" data-original="1" role="button">LEVEL 0 ORIGINAL MODE</a>
+<a class="diff" id="robloxModeBtn" href="#roblox" data-roblox="1" role="button">ROBLOX BACKROOMS</a>
+<a class="diff" id="poolOriginalModeBtn" href="#pool-original" data-pool-original="1" role="button">POOL ROOMS ORIGINAL MODE</a>
+<a id="backModes" href="#game-mode" role="button">BACK TO GAME MODE</a>
 </div>
 </div>
 <div id="ui">
@@ -3186,13 +3186,13 @@ function openMap(){
  document.getElementById('mapPanel').style.display='flex';
 }
 function closeMap(){document.getElementById('mapPanel').style.display='none'}
-document.getElementById('backLevelsFromModes').onclick=()=>{
+document.getElementById('backLevelsFromModes').onclick=e=>{ e.preventDefault();
  document.getElementById('modeChoices').style.display='flex';
  document.getElementById('horrorChoices').style.display='none';
  document.getElementById('difficultyChoices').style.display='none';
  document.getElementById('startSub').textContent='CHOOSE A LEVEL';
 };
-document.querySelectorAll('#modeChoices .mode').forEach(btn=>btn.onclick=()=>{
+document.querySelectorAll('#modeChoices .mode').forEach(btn=>btn.onclick=e=>{ e.preventDefault();
  gameMode=btn.dataset.mode;
  originalMode=false;poolOriginalMode=false;
  const originalBtn=document.getElementById('originalModeBtn');
@@ -3205,13 +3205,13 @@ document.querySelectorAll('#modeChoices .mode').forEach(btn=>btn.onclick=()=>{
  document.getElementById('horrorChoices').style.display='flex';
  document.getElementById('startSub').textContent=gameMode==="pool"?'POOL ROOMS // CHOOSE MODE':'LEVEL 0 // CHOOSE MODE';
 });
-document.querySelectorAll('#horrorChoices .mode').forEach(btn=>btn.onclick=()=>{
+document.querySelectorAll('#horrorChoices .mode').forEach(btn=>btn.onclick=e=>{ e.preventDefault();
  playMode=btn.dataset.playmode;
  document.getElementById('horrorChoices').style.display='none';
  document.getElementById('difficultyChoices').style.display='flex';
  document.getElementById('startSub').textContent=(gameMode==="pool"?'POOL ROOMS':'LEVEL 0')+' // '+(playMode==="peaceful"?'PEACEFUL':'HORROR')+' // CHOOSE DIFFICULTY';
 });
-document.getElementById('backModes').onclick=()=>{
+document.getElementById('backModes').onclick=e=>{ e.preventDefault();
  document.getElementById('difficultyChoices').style.display='none';
  document.getElementById('horrorChoices').style.display='flex';
  document.getElementById('startSub').textContent=gameMode==="pool"?'POOL ROOMS // CHOOSE MODE':'LEVEL 0 // CHOOSE MODE';
@@ -3367,7 +3367,7 @@ document.querySelector('#ratioButtons button[data-ratio="native"]').classList.ad
 document.querySelector('#aspectButtons button[data-aspect="native"]').classList.add('active');
 
 let last=performance.now(),acc=0;
-document.querySelectorAll('.diff').forEach(btn=>btn.onclick=()=>{
+document.querySelectorAll('.diff').forEach(btn=>btn.onclick=e=>{ e.preventDefault();
  if(btn.dataset.poolOriginal){
   originalMode=false;robloxMode=false;poolOriginalMode=true;
   startGame(75);
