@@ -349,141 +349,29 @@ addEventListener('gamepaddisconnected',e=>{
 
 
 function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
-function makeRobloxBackroomsMap(){
- const m=Array.from({length:MH},()=>Array(MW).fill(1));
+const ROBLOX_MAP_SCALE=6;
+const ROBLOX_MAP_W=1080, ROBLOX_MAP_H=798;
+const ROBLOX_TRACE_B64="__ROBLOX_B64__";
+
+async function makeRobloxBackroomsMap(){
+ const bytes=Uint8Array.from(atob(ROBLOX_TRACE_B64),c=>c.charCodeAt(0));
+ const ds=new DecompressionStream('deflate');
+ const stream=new Blob([bytes]).stream().pipeThrough(ds);
+ const raw=new Uint8Array(await new Response(stream).arrayBuffer());
+ const m=Array.from({length:ROBLOX_MAP_H},()=>Array(ROBLOX_MAP_W).fill(1));
+ for(let i=0;i<ROBLOX_MAP_W*ROBLOX_MAP_H;i++){
+  if(raw[i>>3]&(1<<(7-(i&7)))){
+   const x=i%ROBLOX_MAP_W,y=(i/ROBLOX_MAP_W)|0;
+   m[y][x]=0;
+  }
+ }
+ // Keep the traced outer boundary closed.
+ for(let x=0;x<ROBLOX_MAP_W;x++){m[0][x]=1;m[ROBLOX_MAP_H-1][x]=1;}
+ for(let y=0;y<ROBLOX_MAP_H;y++){m[y][0]=1;m[y][ROBLOX_MAP_W-1]=1;}
+ // Reference start/end positions, expressed in the base 180x133 world grid.
+ startCell={x:17,y:129};
+ robloxExitCell={x:177,y:119};
  robloxArrowCells=[];
- robloxExitCell={x:143,y:116};
-
- const carve=(x,y)=>{
-  if(x>0&&y>0&&x<MW-1&&y<MH-1)m[y][x]=0;
- };
- const h=(x1,x2,y,w=0)=>{
-  for(let x=x1;x<=x2;x++)for(let oy=-w;oy<=w;oy++)carve(x,y+oy);
- };
- const v=(x,y1,y2,w=0)=>{
-  for(let y=y1;y<=y2;y++)for(let ox=-w;ox<=w;ox++)carve(x+ox,y);
- };
- const room=(x1,y1,x2,y2)=>{
-  for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)carve(x,y);
- };
- const corridor=(x1,y1,x2,y2,w=1)=>{
-  let x=x1,y=y1;
-  carve(x,y);
-  while(x!==x2){x+=Math.sign(x2-x);for(let oy=-w;oy<=w;oy++)carve(x,y+oy);}
-  while(y!==y2){y+=Math.sign(y2-y);for(let ox=-w;ox<=w;ox++)carve(x+ox,y);}
- };
-
- // The Lobby is a very large, irregular maze rather than a collection of
- // identical rectangular rooms. Start with broad connected zones and then
- // build the long offset walls/branches that create the distinctive map shape.
- room(8,12,48,39);
- room(56,8,93,35);
- room(100,11,145,38);
- room(10,47,39,79);
- room(47,45,82,75);
- room(91,45,126,78);
- room(134,45,150,80);
- room(5,86,33,119);
- room(42,84,70,113);
- room(78,87,110,121);
- room(118,86,149,121);
-
- // Open the large areas into a single winding labyrinth.
- corridor(28,39,28,47,2);
- corridor(64,35,64,45,2);
- corridor(113,38,113,46,2);
- corridor(139,38,139,45,2);
- corridor(39,62,47,62,2);
- corridor(82,61,91,61,2);
- corridor(126,64,134,64,2);
- corridor(20,79,20,87,2);
- corridor(56,74,56,84,2);
- corridor(97,78,97,87,2);
- corridor(130,80,130,86,2);
-
- // Irregular walls and offsets. These deliberately vary in length and do
- // not form a repeating grid.
- h(12,29,21,0); v(12,21,34,0);
- h(34,48,30,0); v(48,15,30,0);
- h(59,75,18,0); v(59,18,31,0);
- h(78,91,27,0); v(78,12,27,0);
- h(105,121,20,0); v(105,20,34,0);
- h(125,141,31,0); v(125,15,31,0);
-
- h(10,25,58,0); v(25,49,71,0);
- h(31,44,70,0); v(44,52,70,0);
- h(51,66,52,0); v(66,45,64,0);
- h(72,87,68,0); v(87,53,72,0);
- h(96,111,55,0); v(96,55,74,0);
- h(113,128,70,0); v(113,48,70,0);
- h(137,149,56,0); v(137,47,68,0);
-
- h(8,24,101,0); v(8,91,112,0);
- h(28,43,92,0); v(43,86,106,0);
- h(49,63,104,0); v(63,87,108,0);
- h(80,95,99,0); v(80,91,115,0);
- h(99,113,112,0); v(113,93,118,0);
- h(122,138,101,0); v(122,87,111,0);
-
- // Smaller side rooms and dead ends are attached to the main maze,
- // rather than being isolated boxes.
- room(2,3,17,14); corridor(17,9,22,9,1);
- room(25,3,39,13); corridor(32,13,32,17,1);
- room(67,2,82,9); corridor(74,9,74,13,1);
- room(110,3,126,12); corridor(118,12,118,16,1);
- room(131,3,150,14); corridor(140,14,140,18,1);
-
- room(2,52,10,68); corridor(10,60,14,60,1);
- room(38,47,49,58); corridor(43,58,43,62,1);
- room(70,48,80,60); corridor(75,60,75,64,1);
- room(116,48,128,60); corridor(122,60,122,64,1);
- room(140,67,150,77); corridor(140,72,136,72,1);
-
- room(3,92,15,107); corridor(15,99,19,99,1);
- room(32,78,45,90); corridor(38,90,38,94,1);
- room(66,91,78,105); corridor(72,105,72,109,1);
- room(106,91,118,105); corridor(112,105,112,109,1);
- room(136,88,150,101); corridor(143,101,143,106,1);
-
- // Re-open the important junctions after the wall pass.
- [
-  [28,39],[28,47],[64,35],[64,45],[113,38],[113,46],[139,38],[139,45],
-  [39,62],[47,62],[82,61],[91,61],[126,64],[134,64],
-  [20,79],[20,87],[56,74],[56,84],[97,78],[97,87],[130,80],[130,86],
-  [17,9],[32,13],[74,9],[118,12],[140,14],
-  [10,60],[43,58],[75,60],[122,60],[136,72],
-  [15,99],[38,90],[72,105],[112,105],[143,101]
- ].forEach(([x,y])=>carve(x,y));
-
- // Base-0 / spawn area.
- room(10,84,23,99);
- corridor(23,92,29,92,2);
- startCell={x:16,y:92};
-
- // The main exit route bends through the far side of the map.
- corridor(113,70,129,70,2);
- corridor(129,70,143,70,2);
- corridor(143,70,143,116,2);
- corridor(143,116,147,116,1);
-
- // Red carpet is deliberately far from the spawn, running down the final
- // distant exit corridor instead of being visible immediately at the start.
-
- // Brown arrows point through the actual route. The final arrows sit beside
- // the red-carpet section and lead to the green exit door.
- robloxArrowCells=[
-  {x:29,y:92,a:0},
-  {x:39,y:62,a:Math.PI/2},
-  {x:64,y:45,a:0},
-  {x:82,y:61,a:Math.PI/2},
-  {x:97,y:78,a:0},
-  {x:113,y:70,a:0},
-  {x:129,y:70,a:0},
-  {x:143,y:80,a:Math.PI/2},
-  {x:143,y:94,a:Math.PI/2},
-  {x:143,y:108,a:Math.PI/2},
-  {x:143,y:115,a:0}
- ];
  return m;
 }
 
@@ -1860,7 +1748,7 @@ function findExit(){
 function rebuildLevel0CeilingLights(){
  ceilingLights=[];
  ceilingLightCells=new Set();
- if(gameMode!=="level0"||!map)return;
+ if(gameMode!=="level0"||robloxMode||!map)return;
 
  // Regular world-space ceiling layout: a fluorescent fixture is centered
  // inside selected 3x3 groups of square acoustic panels.
@@ -1899,7 +1787,18 @@ function rebuildLevel0CeilingLights(){
  }
 }
 function reset(){
- map=poolOriginalMode?makeOriginalPoolMap():(robloxMode?makeRobloxBackroomsMap():(gameMode==="pool"?makePoolMap():(originalMode?makeOriginalMap():makeMap())));findExit();
+ if(robloxMode){
+  map=null;
+  makeRobloxBackroomsMap().then(m=>{
+   if(!gameStarted||!robloxMode)return;
+   map=m;findExit();
+   rebuildLevel0CeilingLights();
+   px=startCell.x+.5;py=startCell.y+.5;pa=0;pz=0;startTime=performance.now();
+   spawnEntities();
+  });
+  return;
+ }
+ map=poolOriginalMode?makeOriginalPoolMap():(gameMode==="pool"?makePoolMap():(originalMode?makeOriginalMap():makeMap()));findExit();
  if(poolOriginalMode)updatePoolOriginalObjective();
  if(originalMode)updateOriginalObjective();
  rebuildLevel0CeilingLights();
@@ -2111,15 +2010,20 @@ function regenHealth(now){
 }
 
 function wall(x,y){
+ if(robloxMode){
+  const gx=Math.floor(x*ROBLOX_MAP_SCALE),gy=Math.floor(y*ROBLOX_MAP_SCALE);
+  if(gx<0||gy<0||gx>=ROBLOX_MAP_W||gy>=ROBLOX_MAP_H)return true;
+  return map[gy][gx]===1;
+ }
  if(x<0||y<0||x>=MW||y>=MH)return true;
  if(originalDoorOpen&&originalDoorCell&&x===originalDoorCell.x&&y===originalDoorCell.y)return false;
  return map[y][x]===1;
 }
 function startGame(size){
- MW=poolOriginalMode?150:(robloxMode?152:(gameMode==="pool"?(size===21?90:size===31?110:130):(originalMode?152:size)));
- MH=poolOriginalMode?120:(robloxMode?127:(gameMode==="pool"?MW:(originalMode?127:size)));
+ MW=poolOriginalMode?150:(robloxMode?180:(gameMode==="pool"?(size===21?90:size===31?110:130):(originalMode?152:size)));
+ MH=poolOriginalMode?120:(robloxMode?133:(gameMode==="pool"?MW:(originalMode?127:size)));
  difficultySize=size;
- startCell=robloxMode?{x:15,y:92}:gameMode==="pool"?{x:1,y:1}:{x:1,y:1};
+ startCell=robloxMode?{x:17,y:129}:gameMode==="pool"?{x:1,y:1}:{x:1,y:1};
  gameStarted=true;
  document.getElementById('startScreen').style.display='none';
  document.getElementById('objectivePanel').style.display='none';
@@ -2771,18 +2675,20 @@ function render(){
   const cam=(x/W-.5)*2;
   const ra=pa+Math.atan(cam*Math.tan(currentFOV/2));
   const rx=Math.cos(ra),ry=Math.sin(ra);
-  let mx=Math.floor(px),my=Math.floor(py),side=0,hitExit=false,hitExitCell=null,dist=RENDER_DISTANCE+1;
+  const rayScale=robloxMode?ROBLOX_MAP_SCALE:1;
+  const rayPX=px*rayScale,rayPY=py*rayScale;
+  let mx=Math.floor(rayPX),my=Math.floor(rayPY),side=0,hitExit=false,hitExitCell=null,dist=RENDER_DISTANCE*rayScale+1;
   const ddx=Math.abs(1/(rx||1e-9)),ddy=Math.abs(1/(ry||1e-9));
   const sx=rx<0?-1:1,sy=ry<0?-1:1;
-  let sdx=rx<0?(px-mx)*ddx:(mx+1-px)*ddx;
-  let sdy=ry<0?(py-my)*ddy:(my+1-py)*ddy;
+  let sdx=rx<0?(rayPX-mx)*ddx:(mx+1-rayPX)*ddx;
+  let sdy=ry<0?(rayPY-my)*ddy:(my+1-rayPY)*ddy;
 
   for(let i=0;i<80;i++){
    if(sdx<sdy){dist=sdx;sdx+=ddx;mx+=sx;side=0}
    else{dist=sdy;sdy+=ddy;my+=sy;side=1}
-   if(originalMode&&atExitWallCell(mx,my)){hitExit=true;hitExitCell={x:mx,y:my};break;}
-   if(wall(mx,my))break;
-   if(atExit(mx,my)){hitExit=true;hitExitCell={x:mx,y:my};break}
+   if(!robloxMode&&originalMode&&atExitWallCell(mx,my)){hitExit=true;hitExitCell={x:mx,y:my};break;}
+   if(robloxMode ? map[my]?.[mx]===1 : wall(mx,my))break;
+   if(!robloxMode&&atExit(mx,my)){hitExit=true;hitExitCell={x:mx,y:my};break}
   }
 
   if(hitExit){
@@ -2790,6 +2696,7 @@ function render(){
    dist=Math.max(.05,ex*rx+ey*ry);
   }
   dist=Math.max(.05,dist*Math.cos(ra-pa));
+  if(robloxMode)dist/=ROBLOX_MAP_SCALE;
   depthBuffer[x]=dist;
 
   if(dist>RENDER_DISTANCE){
@@ -2855,9 +2762,11 @@ function render(){
      }else{r=36;gc=29;b=20;}
     }
    }else{
+    const wallWorldX=robloxMode?mx/ROBLOX_MAP_SCALE:mx;
+    const wallWorldY=robloxMode?my/ROBLOX_MAP_SCALE:my;
     const wt=gameMode==="pool"
-      ?poolWallTexture(mx+(side?0.5:0),my+(side?0:0.5))
-      :wallTexture(mx+(side?0.5:0),my+(side?0:0.5));
+      ?poolWallTexture(wallWorldX+(side?.5:0),wallWorldY+(side?0:.5))
+      :wallTexture(wallWorldX+(side?.5:0),wallWorldY+(side?0:.5));
     // Every detail value comes only from the 3D wall hit position.
     // No screen x/y coordinates are used, so the detail cannot stick to the display.
     const hitX=px+rx*dist;
