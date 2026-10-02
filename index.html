@@ -23,7 +23,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #staminaText{font-size:10px;margin-top:3px;opacity:.75}
 #pauseBtn{position:absolute;top:34px;right:12px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#ddd;border:1px solid #777;font:12px monospace}
 #devBtn{position:absolute;top:34px;right:142px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#fff;border:1px solid #777;font:12px monospace}
-#mapBtn{position:absolute;top:34px;right:78px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#fff;border:1px solid #777;font:12px monospace}
+#mapBtn{position:absolute;top:34px;right:78px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#fff;border:1px solid #777;font:12px monospace}\n#objectiveBtn{position:absolute;top:34px;right:210px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#fff;border:1px solid #777;font:12px monospace;display:none}\n#objectivePanel{position:fixed;left:50%;top:82px;transform:translateX(-50%);width:min(360px,calc(100vw - 28px));display:none;background:rgba(7,5,2,.96);color:#eee;border:1px solid #777;padding:16px;box-sizing:border-box;z-index:7;pointer-events:auto;text-align:left}\n#objectivePanel h2{font-size:16px;letter-spacing:3px;margin:0 0 10px;text-align:center}\n#objectiveCurrent{font-size:12px;line-height:1.45;padding:9px;border:1px solid #665b3d;background:#17120c;margin-bottom:12px}\n#objectiveSteps{margin:0;padding-left:20px;font-size:11px;line-height:1.7;opacity:.88}\n#objectiveClose{display:block;margin:14px auto 0;padding:7px 18px;background:#18130c;color:#eee;border:1px solid #888;font:12px monospace}
 #mapPanel{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(7,5,2,.94);color:#eee;z-index:6}
 #mapPanel h1{font-size:24px;letter-spacing:4px;margin:0 0 10px}
 #mapCanvas{width:min(82vw,82vh);height:min(82vw,82vh);image-rendering:pixelated;border:2px solid #777;background:#111}
@@ -62,7 +62,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 #moveStick{left:22px;bottom:24px}
 #lookStick{right:22px;bottom:24px}
 #run{position:absolute;right:60px;bottom:155px;width:64px;height:40px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(0,0,0,.2);color:#ddd;font:12px monospace;pointer-events:auto}
-#originalObjective{position:absolute;top:168px;left:12px;max-width:260px;display:none;opacity:.72;font-size:10px;line-height:1.35;letter-spacing:1px;color:#eee;text-shadow:1px 1px #000}\n#gamepadStatus{position:absolute;bottom:8px;right:9px;opacity:.38;font-size:9px;letter-spacing:1px}
+#originalObjective{position:absolute;top:168px;left:12px;max-width:260px;display:none;opacity:.72;font-size:10px;line-height:1.35;letter-spacing:1px;color:#eee;text-shadow:1px 1px #000}
+#gamepadStatus{position:absolute;bottom:8px;right:9px;opacity:.38;font-size:9px;letter-spacing:1px}
 @media(pointer:coarse){#touch{display:block}#hint{display:none}}
 </style>
 </head>
@@ -86,15 +87,15 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <button class="diff" data-size="31">MEDIUM</button>
 <button class="diff" data-size="41">HARD</button>
 <button class="diff" id="originalModeBtn" data-original="1">ORIGINAL MODE</button>
-<button id="backModes">BACK TO LEVELS</button>
+<button id="backModes">BACK TO GAME MODE</button>
 </div>
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v20</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v21</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div><div id="originalObjective"></div>
-<button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
+<button id="objectiveBtn">OBJECTIVE</button><button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
 <div id="cross"></div>
 <div id="hint">WASD / ARROWS TO MOVE • MOUSE OR Q/E TO LOOK • FIND THE EXIT</div>
 </div>
@@ -119,7 +120,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div></div>
 <button id="resume">RESUME</button>
 </div>
-<div id="mapPanel">
+<div id="objectivePanel"><h2>ORIGINAL MODE OBJECTIVE</h2><div id="objectiveCurrent">Find the ladder pieces.</div><ol id="objectiveSteps"><li>Find all 4 ladder pieces.</li><li>Use the repaired ladder to get the key.</li><li>Unlock the door near the Pitfalls.</li><li>Cross the Pitfalls and reach the lower route if you fall.</li><li>Follow the route to an exit / vent.</li></ol><button id="objectiveClose" type="button">CLOSE</button></div>\n<div id="mapPanel">
 <h1>DEV MAP</h1>
 <canvas id="mapCanvas" width="410" height="410"></canvas>
 <div>WHITE = EXIT &nbsp; • &nbsp; RED = YOU &nbsp; • &nbsp; BLACK = ENTITIES &nbsp; • &nbsp; YELLOW = PATH</div>
@@ -439,16 +440,37 @@ function originalPitAt(x,y){
 }
 function updateOriginalObjective(){
  const el=document.getElementById('originalObjective');
+ const current=document.getElementById('objectiveCurrent');
+ const btn=document.getElementById('objectiveBtn');
  if(!el)return;
- if(!originalMode){el.style.display='none';return;}
+ if(!originalMode){
+  el.style.display='none';
+  if(btn)btn.style.display='none';
+  return;
+ }
  el.style.display='block';
- let text='ROOM: '+(originalRoomAt(Math.floor(px),Math.floor(py))||'LOBBY')+' • ';
- if(originalLadderCollected<4)text+='LADDER PIECES: '+originalLadderCollected+'/4';
- else if(!originalHasKey)text='LADDER REPAIRED • FIND THE KEY';
- else if(!originalDoorOpen)text='KEY FOUND • UNLOCK THE DOOR';
- else if(!originalLowerRoute)text='DOOR OPEN • CROSS THE PITFALLS';
- else text='FOLLOW THE ARROWS • FIND THE VENT';
+ if(btn)btn.style.display='block';
+ const room=originalRoomAt(Math.floor(px),Math.floor(py))||'LOBBY';
+ let text='ROOM: '+room+' • ';
+ let currentText='';
+ if(originalLadderCollected<4){
+  text+='LADDER PIECES: '+originalLadderCollected+'/4';
+  currentText='Find the remaining ladder pieces ('+originalLadderCollected+'/4 collected).';
+ }else if(!originalHasKey){
+  text='LADDER REPAIRED • FIND THE KEY';
+  currentText='All 4 pieces are collected. Find the key using the repaired ladder.';
+ }else if(!originalDoorOpen){
+  text='KEY FOUND • UNLOCK THE DOOR';
+  currentText='You have the key. Find the locked door and open it.';
+ }else if(!originalLowerRoute){
+  text='DOOR OPEN • CROSS THE PITFALLS';
+  currentText='Cross the Pitfalls. Falling sends you to the lower route.';
+ }else{
+  text='FOLLOW THE ARROWS • FIND THE VENT';
+  currentText='The route is open. Follow the path and find an exit / vent.';
+ }
  el.textContent=text;
+ if(current)current.textContent=currentText;
 }
 function originalInteract(){
  if(!originalMode||paused||finished)return;
@@ -879,11 +901,14 @@ function startGame(size){
  startCell=gameMode==="pool"?{x:1,y:1}:{x:1,y:1};
  gameStarted=true;
  document.getElementById('startScreen').style.display='none';
+ document.getElementById('objectivePanel').style.display='none';
+ document.getElementById('objectiveBtn').style.display=originalMode?'block':'none';
  document.getElementById('originalObjective').style.display=originalMode?'block':'none';
  document.getElementById('title').textContent=gameMode==="pool"?"BACKROOMS // POOL ROOMS":(originalMode?"BACKROOMS // LEVEL 0 // ORIGINAL":"BACKROOMS // LEVEL 0");
  reset();
 }
-function atExitWallCell(x,y){return originalMode&&exitCells.some(e=>x===e.x&&y===e.y)}\nfunction atExit(x,y){
+function atExitWallCell(x,y){return originalMode&&exitCells.some(e=>x===e.x&&y===e.y)}
+function atExit(x,y){
  if(!exitCells.length)return false;
  if(originalMode)return exitEntryCells.some(e=>x===e[0]&&y===e[1]);
  return exitCells.some(e=>x===e.x&&y===e.y);
@@ -1680,6 +1705,15 @@ document.getElementById('backModes').onclick=()=>{
 document.getElementById('pauseBtn').onclick=togglePause;
 document.getElementById('devBtn').onclick=devToExit;
 document.getElementById('mapBtn').onclick=openMap;
+document.getElementById('objectiveBtn').onclick=()=>{
+ if(!originalMode||finished)return;
+ clearKeys();
+ const p=document.getElementById('objectivePanel');
+ p.style.display=p.style.display==='block'?'none':'block';
+};
+document.getElementById('objectiveClose').onclick=()=>{
+ document.getElementById('objectivePanel').style.display='none';
+};
 document.getElementById('mapClose').onclick=closeMap;
 document.getElementById('resume').onclick=togglePause;
 document.getElementById('clueToggle').onclick=toggleClues;
@@ -1691,6 +1725,8 @@ document.getElementById('retry').onclick=()=>{
  document.getElementById('modeChoices').style.display='flex';
  document.getElementById('startSub').textContent='CHOOSE A LEVEL';
  gameStarted=false;finished=false;clearKeys();
+ document.getElementById('objectivePanel').style.display='none';
+ document.getElementById('objectiveBtn').style.display='none';
 };
 updateClueToggle();
 document.getElementById('sens').oninput=e=>{sensitivity=+e.target.value*.01;document.getElementById('sensVal').textContent=e.target.value};
