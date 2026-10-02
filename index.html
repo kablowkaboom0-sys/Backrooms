@@ -98,7 +98,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v28</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v29</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div><div id="balanceUI"><div class="balanceLabel">BALANCE</div><div class="balanceBar"><div id="balanceFill"></div></div><div id="balanceText">CENTER</div></div><div id="originalObjective"></div>
 <button id="objectiveBtn">OBJECTIVE</button><button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -791,17 +791,67 @@ function findExit(){
  exitCell={x:far[0],y:far[1]};
  exitCells=[exitCell];
 }
+function rebuildLevel0CeilingLights(){
+ ceilingLights=[];
+ if(gameMode!=="level0"||!map)return;
+
+ // Use the actual floorplan to place fluorescent fixtures instead of the
+ // old diagonal x+y pattern. Straight corridors get repeated fixtures,
+ // intersections get a fixture, and larger open Original Mode rooms get
+ // a regular 2x2 ceiling grid.
+ const occupied=new Set();
+ const key=(x,y)=>x+','+y;
+ const add=(x,y)=>{
+  if(x<1||y<1||x>=MW-1||y>=MH-1||map[y]?.[x]!==0)return;
+  const k=key(x,y);
+  if(occupied.has(k))return;
+  occupied.add(k);
+  ceilingLights.push({x:x+.5,y:y+.5});
+ };
+
+ if(originalMode){
+  // Original Mode has irregular rooms, so place lights in open ceiling
+  // areas while keeping them away from narrow one-cell wall gaps.
+  for(let y=1;y<MH-1;y+=2){
+   for(let x=1;x<MW-1;x+=2){
+    if(map[y]?.[x]!==0)continue;
+    const open=(map[y-1][x]===0)+(map[y+1][x]===0)+(map[y][x-1]===0)+(map[y][x+1]===0);
+    if(open>=3 && ((Math.floor(x/2)+Math.floor(y/2))%3===0))add(x,y);
+   }
+  }
+  // Fill long straight sections where the regular room grid did not land.
+  for(let y=1;y<MH-1;y++){
+   for(let x=1;x<MW-1;x++){
+    if(map[y]?.[x]!==0)continue;
+    const lr=map[y][x-1]===0&&map[y][x+1]===0;
+    const ud=map[y-1][x]===0&&map[y+1][x]===0;
+    if((lr||ud)&&((x*7+y*11)%9===0))add(x,y);
+   }
+  }
+ }else{
+  // Normal Level 0: follow corridor direction. This produces a believable
+  // fluorescent-light rhythm instead of lights appearing on a diagonal.
+  for(let y=1;y<MH-1;y++){
+   for(let x=1;x<MW-1;x++){
+    if(map[y]?.[x]!==0)continue;
+    const left=map[y][x-1]===0,right=map[y][x+1]===0;
+    const up=map[y-1][x]===0,down=map[y+1][x]===0;
+    const lr=left&&right,ud=up&&down;
+    const degree=left+right+up+down;
+
+    // Intersections and corners receive their own ceiling fixture.
+    if(degree>=3){add(x,y);continue;}
+    if(lr && ((x-1)%6===0))add(x,y);
+    else if(ud && ((y-1)%6===0))add(x,y);
+    else if(!lr&&!ud && degree===2 && ((x+y)%7===0))add(x,y);
+   }
+  }
+ }
+}
 function reset(){
  map=gameMode==="pool"?makePoolMap():(originalMode?makeOriginalMap():makeMap());findExit();
  if(originalMode)updateOriginalObjective();
- ceilingLights=[];
- if(gameMode!=="pool"){
-  for(let y=1;y<MH-1;y++)for(let x=1;x<MW-1;x++){
-   if(map[y][x]!==0)continue;
-   const open=(map[y-1][x]===0?1:0)+(map[y+1][x]===0?1:0)+(map[y][x-1]===0?1:0)+(map[y][x+1]===0?1:0);
-   if(open>=2 && ((x+y)%4===0)) ceilingLights.push({x:x+.5,y:y+.5});
-  }
- }
+ rebuildLevel0CeilingLights();
  px=startCell.x+.5;py=startCell.y+.5;pa=0;pz=poolFloorAt(px,py);startTime=performance.now();
  if(originalMode)updateOriginalObjective();
  playerStamina=STAMINA_MAX;lastStaminaUpdate=startTime;updateStaminaUI();
@@ -1352,8 +1402,8 @@ function drawCeilingLightsSafe(){
  if(gameMode==="pool"||!ceilingLights.length)return;
  const hz=H*.51;
  const tanHalf=Math.tan(currentFOV/2);
- const half=.20;
- const panelZ=1.05;
+ const half=.34;
+ const panelZ=.94;
 
  function project(wx,wy){
   const dx=wx-px,dy=wy-py;
@@ -1367,8 +1417,7 @@ function drawCeilingLightsSafe(){
  }
 
  for(const light of ceilingLights){
-  // Ceiling tiles are 1x1 world units. Each light is anchored at the
-  // exact center of its tile (x+.5,y+.5), matching the grid texture.
+  // Each fixture is anchored to the center of its world-space ceiling panel.
   const tileCenterX=Math.floor(light.x)+.5;
   const tileCenterY=Math.floor(light.y)+.5;
 
@@ -1594,12 +1643,14 @@ function render(){
     const wx=px+Math.cos(ra)*ceilingDepth;
     const wy=py+Math.sin(ra)*ceilingDepth;
 
-    // Square acoustic ceiling tiles, about 1 world unit wide.
-    const tileX=Math.floor(wx);
-    const tileY=Math.floor(wy);
-    const localX=wx-tileX;
-    const localY=wy-tileY;
-    const seam=(localX<.045||localY<.045)?-25:0;
+    // Larger acoustic ceiling panels, closer to a real Level 0 ceiling.
+    // Panels are 2x2 world units, with seams aligned to world space.
+    const tileSize=2;
+    const tileX=Math.floor(wx/tileSize);
+    const tileY=Math.floor(wy/tileSize);
+    const localX=(wx/tileSize)-tileX;
+    const localY=(wy/tileSize)-tileY;
+    const seam=(localX<.035||localY<.035)?-28:0;
     const tileNoise=hash(tileX*31,tileY*47)*5-2.5;
     const light=fade*fog;
 
