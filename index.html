@@ -90,7 +90,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v7</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v8</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div>
 <button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -523,7 +523,7 @@ function spawnEntities(){
   entities.push({
    x:pick[0]+.5,y:pick[1]+.5,
    path:[],nextThink:0,lastHit:0,
-   phase:i*.9,walkPhase:i*.9
+   phase:i*.9,walkPhase:0,vx:0,vy:0
   });
  }
 }
@@ -570,13 +570,17 @@ function updateEntities(now,dt){
    // Only Hard reaches the player's base walking speed.
    const playerBaseSpeed=2.15;
    const entitySpeed=MW===21?ENTITY_SPEED:MW===31?ENTITY_SPEED*1.15:playerBaseSpeed;
+   const desiredVx=vx/len*entitySpeed,desiredVy=vy/len*entitySpeed;
+   const accel=Math.min(1,dt*9);
+   e.vx+=(desiredVx-e.vx)*accel; e.vy+=(desiredVy-e.vy)*accel;
+   const speed=Math.hypot(e.vx,e.vy)||1;
+   if(speed>entitySpeed){e.vx=e.vx/speed*entitySpeed;e.vy=e.vy/speed*entitySpeed;}
    const step=Math.min(entitySpeed*dt,len);
    const oldX=e.x,oldY=e.y;
-   const nx=e.x+vx/len*step,ny=e.y+vy/len*step;
+   const nx=e.x+e.vx*dt,ny=e.y+e.vy*dt;
    if(!wall(Math.floor(nx),Math.floor(e.y)) && Math.hypot(nx-px,e.y-py)>.32)e.x=nx;
    if(!wall(Math.floor(e.x),Math.floor(ny)) && Math.hypot(e.x-px,ny-py)>.32)e.y=ny;
-   const moved=Math.hypot(e.x-oldX,e.y-oldY);
-   if(moved>0)e.walkPhase=(e.walkPhase||0)+moved*14;
+   
   }else if(now-e.lastHit>=ENTITY_DAMAGE_COOLDOWN){
    e.lastHit=now;
    playerHealth=Math.max(0,playerHealth-ENTITY_DAMAGE);
@@ -1001,74 +1005,23 @@ function drawCeilingLightsSafe(){
 }
 
 function drawLevel0Entity(center,top,h,unit,phase){
- const t=phase||0, walk=Math.sin(t), walk2=Math.sin(t+Math.PI), scale=Math.max(3,h);
- const bob=Math.abs(Math.sin(t*.5))*scale*.008, y0=top+bob, cx=center;
- g.save();
- g.fillStyle='rgba(5,4,3,1)'; g.strokeStyle='rgba(5,4,3,1)';
- g.lineCap='round'; g.lineJoin='round';
- // Irregular oversized head, with no eyes or facial features.
- g.beginPath();
- g.moveTo(cx-scale*.11,y0+scale*.015);
- g.bezierCurveTo(cx-scale*.16,y0-scale*.015,cx-scale*.12,y0-scale*.105,cx-scale*.045,y0-scale*.115);
- g.bezierCurveTo(cx+scale*.055,y0-scale*.14,cx+scale*.14,y0-scale*.075,cx+scale*.125,y0+scale*.015);
- g.bezierCurveTo(cx+scale*.145,y0+scale*.075,cx+scale*.07,y0+scale*.11,cx-scale*.005,y0+scale*.095);
- g.bezierCurveTo(cx-scale*.085,y0+scale*.11,cx-scale*.15,y0+scale*.075,cx-scale*.11,y0+scale*.015);
- g.closePath(); g.fill();
- // Thin neck and shoulders.
- g.lineWidth=Math.max(.8,scale*.025);
- g.beginPath();
- g.moveTo(cx-scale*.025,y0+scale*.095);
- g.quadraticCurveTo(cx-scale*.015,y0+scale*.14,cx-scale*.09,y0+scale*.17);
- g.quadraticCurveTo(cx-scale*.005,y0+scale*.15,cx+scale*.07,y0+scale*.17);
- g.stroke();
- // Long arms swing opposite each other.
- const lx=cx-scale*(.34+walk*.045), ly=y0+scale*(.72+walk*.025);
- const rx=cx+scale*(.34-walk*.045), ry=y0+scale*(.66-walk*.025);
- g.lineWidth=Math.max(1,scale*.028);
- g.beginPath();
- g.moveTo(cx-scale*.065,y0+scale*.17);
- g.bezierCurveTo(cx-scale*.15,y0+scale*.20,cx-scale*.22,y0+scale*.37,cx-scale*.26,y0+scale*.53);
- g.bezierCurveTo(cx-scale*.28,y0+scale*.64,lx,y0+scale*.68,lx,ly); g.stroke();
- g.beginPath();
- g.moveTo(cx+scale*.055,y0+scale*.17);
- g.bezierCurveTo(cx+scale*.15,y0+scale*.20,cx+scale*.22,y0+scale*.28,cx+scale*.25,y0+scale*.43);
- g.bezierCurveTo(cx+scale*.27,y0+scale*.55,rx,y0+scale*.59,rx,ry); g.stroke();
- function fingers(x,y,dir){
-  g.lineWidth=Math.max(.65,scale*.016);
-  for(let k=-1;k<=1;k++){
-   g.beginPath(); g.moveTo(x,y);
-   g.quadraticCurveTo(x+dir*scale*.018,y+scale*.035,x+dir*scale*(.035+.012*k),y+scale*(.075+.012*Math.abs(k)));
-   g.stroke();
-  }
- }
- fingers(lx,ly,-1); fingers(rx,ry,1);
- // Extremely thin crooked torso.
- g.lineWidth=Math.max(1,scale*.034);
- g.beginPath();
- g.moveTo(cx-scale*.01,y0+scale*.18);
- g.bezierCurveTo(cx-scale*.035,y0+scale*.28,cx+scale*.015,y0+scale*.39,cx-scale*.015,y0+scale*.49);
- g.bezierCurveTo(cx-scale*.045,y0+scale*.54,cx+scale*.035,y0+scale*.59,cx+scale*.015,y0+scale*.62); g.stroke();
- // Hip line.
- g.lineWidth=Math.max(1,scale*.027);
- g.beginPath(); g.moveTo(cx-scale*.09,y0+scale*.50);
- g.quadraticCurveTo(cx,y0+scale*.54,cx+scale*.09,y0+scale*.51); g.stroke();
- // Long legs alternate during walking.
- const hipY=y0+scale*.53;
- const lkx=cx-scale*(.09+walk*.07), rkx=cx+scale*(.09+walk2*.07);
- const lfx=cx-scale*(.11+walk*.10), rfx=cx+scale*(.11+walk2*.10), bottom=y0+scale*.96;
- g.lineWidth=Math.max(1,scale*.024);
- g.beginPath();
- g.moveTo(cx-scale*.055,hipY);
- g.bezierCurveTo(cx-scale*.075,y0+scale*.63,lkx,y0+scale*.70,lkx,y0+scale*.76);
- g.bezierCurveTo(lkx-scale*.015,y0+scale*.84,lfx,y0+scale*.89,lfx,bottom); g.stroke();
- g.beginPath();
- g.moveTo(cx+scale*.055,hipY);
- g.bezierCurveTo(cx+scale*.075,y0+scale*.63,rkx,y0+scale*.70,rkx,y0+scale*.76);
- g.bezierCurveTo(rkx+scale*.015,y0+scale*.84,rfx,y0+scale*.89,rfx,bottom); g.stroke();
- // Thin hooked feet.
- g.lineWidth=Math.max(.7,scale*.017);
- g.beginPath(); g.moveTo(lfx,bottom); g.quadraticCurveTo(lfx-scale*.025,bottom+scale*.015,lfx-scale*.065,bottom+scale*.025); g.stroke();
- g.beginPath(); g.moveTo(rfx,bottom); g.quadraticCurveTo(rfx+scale*.025,bottom+scale*.015,rfx+scale*.065,bottom+scale*.025); g.stroke();
+ const cx=center,cy=top;
+ g.save(); g.lineCap='round'; g.lineJoin='round';
+ const body='#b9ad87',shadow='#756a4c',light='#d5caa5';
+ g.strokeStyle=shadow; g.lineWidth=Math.max(.65,unit*.72);
+ g.beginPath(); g.moveTo(cx-1.35*unit,cy+13*unit); g.quadraticCurveTo(cx-1.55*unit,cy+16.4*unit,cx-1.85*unit,cy+20*unit); g.quadraticCurveTo(cx-2.15*unit,cy+21*unit,cx-2.35*unit,cy+21.8*unit); g.stroke();
+ g.beginPath(); g.moveTo(cx+1.35*unit,cy+13*unit); g.quadraticCurveTo(cx+1.55*unit,cy+16.4*unit,cx+1.85*unit,cy+20*unit); g.quadraticCurveTo(cx+2.15*unit,cy+21*unit,cx+2.35*unit,cy+21.8*unit); g.stroke();
+ g.strokeStyle=light; g.lineWidth=Math.max(.35,unit*.22);
+ g.beginPath(); g.moveTo(cx-1.3*unit,cy+13*unit); g.lineTo(cx-1.75*unit,cy+19.8*unit); g.stroke();
+ g.beginPath(); g.moveTo(cx+1.3*unit,cy+13*unit); g.lineTo(cx+1.75*unit,cy+19.8*unit); g.stroke();
+ g.fillStyle=body; g.beginPath(); g.moveTo(cx-.82*unit,cy+5.2*unit); g.quadraticCurveTo(cx-1.05*unit,cy+8*unit,cx-.68*unit,cy+13.5*unit); g.quadraticCurveTo(cx,cy+14.2*unit,cx+.68*unit,cy+13.5*unit); g.quadraticCurveTo(cx+1.05*unit,cy+8*unit,cx+.82*unit,cy+5.2*unit); g.quadraticCurveTo(cx,cy+4.7*unit,cx-.82*unit,cy+5.2*unit); g.fill();
+ g.strokeStyle=body; g.lineWidth=Math.max(.7,unit*.62);
+ g.beginPath(); g.moveTo(cx-.68*unit,cy+6*unit); g.quadraticCurveTo(cx-2.45*unit,cy+7*unit,cx-2.8*unit,cy+10.7*unit); g.quadraticCurveTo(cx-3*unit,cy+12.3*unit,cx-3.35*unit,cy+14.8*unit); g.stroke();
+ g.beginPath(); g.moveTo(cx+.68*unit,cy+6*unit); g.quadraticCurveTo(cx+2.45*unit,cy+7*unit,cx+2.8*unit,cy+10.7*unit); g.quadraticCurveTo(cx+3*unit,cy+12.3*unit,cx+3.35*unit,cy+14.8*unit); g.stroke();
+ g.lineWidth=Math.max(.35,unit*.24);
+ for(const side of [-1,1]){ const sx=cx+side*3.35*unit,sy=cy+14.8*unit; for(let k=-1;k<=1;k++){ g.beginPath(); g.moveTo(sx,sy); g.lineTo(sx+side*.48*unit,sy+k*.28*unit); g.stroke(); } }
+ g.fillStyle=body; g.beginPath(); g.moveTo(cx-2.15*unit,cy+1*unit); g.quadraticCurveTo(cx-2.75*unit,cy-1*unit,cx-1.45*unit,cy-2.65*unit); g.quadraticCurveTo(cx-.25*unit,cy-4.05*unit,cx+1.35*unit,cy-3.25*unit); g.quadraticCurveTo(cx+2.65*unit,cy-2.55*unit,cx+2.55*unit,cy-.55*unit); g.quadraticCurveTo(cx+2.75*unit,cy+1.15*unit,cx+1.35*unit,cy+2*unit); g.quadraticCurveTo(cx-.15*unit,cy+2.75*unit,cx-1.35*unit,cy+2*unit); g.quadraticCurveTo(cx-2.15*unit,cy+1.8*unit,cx-2.15*unit,cy+1*unit); g.fill();
+ g.strokeStyle=shadow; g.lineWidth=Math.max(.35,unit*.25); g.beginPath(); g.moveTo(cx-1.65*unit,cy-.35*unit); g.quadraticCurveTo(cx-.55*unit,cy-1.15*unit,cx+.65*unit,cy-.65*unit); g.quadraticCurveTo(cx+1.35*unit,cy-.35*unit,cx+1.75*unit,cy+.55*unit); g.stroke();
  g.restore();
 }
 function drawSmiler(center,top,h,unit,dist){
