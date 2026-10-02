@@ -1007,29 +1007,26 @@ function drawCeilingLightsSafe(){
 const level0EntitySource=new Image();
 const level0EntityCanvas=document.createElement('canvas');
 let level0EntityReady=false;
+// Exact user-provided simplified entity silhouette, with only the white background removed.
+// The black figure itself is always fully opaque.
 level0EntitySource.onload=()=>{
  level0EntityCanvas.width=level0EntitySource.naturalWidth;
  level0EntityCanvas.height=level0EntitySource.naturalHeight;
  const cg=level0EntityCanvas.getContext('2d');
  cg.clearRect(0,0,level0EntityCanvas.width,level0EntityCanvas.height);
  cg.drawImage(level0EntitySource,0,0);
- const img=cg.getImageData(0,0,level0EntityCanvas.width,level0EntityCanvas.height);
- for(let i=0;i<img.data.length;i+=4){
-  const a=img.data[i+3];
-  img.data[i+3]=a>24?255:0;
- }
- cg.putImageData(img,0,0);
  level0EntityReady=true;
 };
-level0EntitySource.src='entity_repo.png?v=10';
+level0EntitySource.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIQAAAABCAYAAABeVwH4AAAAAklEQVR4AewaftIAAAANSURBVGP4z8DwnwEIAAAFAgEAffQh0QAAAABJRU5ErkJggg==';
 
 function drawLevel0Entity(center,top,h,unit,phase){
  if(!level0EntityReady)return 0;
- const drawH=Math.min(H*.86,Math.max(4,h));
- const drawW=drawH*(level0EntityCanvas.width/level0EntityCanvas.height);
- const drawTop=H/2-drawH*.48;
+ const drawH=Math.max(4,Math.min(H*.92,h));
+ const drawW=drawH*(level0EntityCanvas.width/Math.max(1,level0EntityCanvas.height));
+ const drawTop=top;
  g.save();
  g.globalAlpha=1;
+ g.globalCompositeOperation='source-over';
  g.imageSmoothingEnabled=false;
  g.drawImage(level0EntityCanvas,center-drawW/2,drawTop,drawW,drawH);
  g.restore();
@@ -1118,6 +1115,7 @@ function drawStaminaVision(){
  g.fillRect(W-5,0,5,H);
 }
 function drawEntityGlitch(now){
+ if(gameMode==='level0')return;
  const closest=entities.reduce((best,e)=>Math.min(best,Math.hypot(e.x-px,e.y-py)),Infinity);
  const range=1.65;
  if(!Number.isFinite(closest)||closest>=range||finished)return;
