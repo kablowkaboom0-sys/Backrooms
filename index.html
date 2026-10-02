@@ -339,7 +339,6 @@ function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
 function makeRobloxBackroomsMap(){
  const m=Array.from({length:MH},()=>Array(MW).fill(1));
  robloxArrowCells=[];
- robloxRedCarpetCells=new Set();
  robloxExitCell={x:143,y:116};
 
  const carve=(x,y)=>{
