@@ -300,7 +300,7 @@ function makeOriginalMap(){
  const m=rle.map(row=>{
   const out=[];
   for(const token of row.split(',')){
-   const v=token[0]==='1'?1:0;
+   const v=token[0]==='1'?0:1;
    const n=Number(token.slice(1));
    for(let i=0;i<n;i++)out.push(v);
   }
@@ -312,12 +312,12 @@ function makeOriginalMap(){
   return out;
  });
  MW=100; MH=100;
- startCell={x:51,y:46};
+ startCell={x:50,y:48};
  exitCells=[
   {x:57,y:4},
   {x:4,y:50},
   {x:80,y:50},
-  {x:84,y:89}
+  {x:81,y:68}
  ];
  for(const ex of exitCells){
   for(let yy=-1;yy<=1;yy++)for(let xx=-1;xx<=1;xx++){
