@@ -91,7 +91,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v15</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v16</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div>
 <button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -296,92 +296,30 @@ function makeMap(){
  carve(1,1);return m;
 }
 function makeOriginalMap(){
- const m=Array.from({length:MH},()=>Array(MW).fill(1));
- const carveRect=(x,y,w,h)=>{
-  for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++){
-   if(xx>0&&yy>0&&xx<MW-1&&yy<MH-1)m[yy][xx]=0;
+ const rle=["0100","0100","058,13,039","057,14,039","057,14,039","057,14,039","057,14,039","057,14,039","058,12,040","058,12,040","058,12,040","057,15,038","051,14,01,17,01,11,01,13,031","051,118,031","051,118,031","049,18,01,12,01,110,029","049,15,05,11,02,11,02,16,029","049,12,018,12,029","047,116,01,14,01,13,028","047,120,01,14,028","049,118,01,14,028","047,14,02,14,01,14,02,17,029","047,14,02,115,01,12,029","047,119,01,11,01,13,028","047,14,02,113,01,15,028","047,14,02,13,01,11,02,18,01,13,028","047,19,01,11,02,18,01,11,030","047,125,028","047,14,02,119,028","047,14,02,110,02,11,01,11,01,13,028","047,116,01,18,028","047,110,01,12,01,111,028","047,14,02,12,01,18,01,13,01,11,01,11,028","047,14,02,115,01,13,028","047,125,028","046,13,05,14,012,13,027","034,121,01,12,01,14,01,13,01,16,01,17,018","034,124,01,14,01,13,01,114,018","034,17,02,15,01,13,01,110,01,112,01,15,018","034,121,01,126,018","036,18,01,121,01,14,02,16,01,11,019","031,17,02,14,01,134,01,12,018","031,14,01,12,02,17,02,16,01,110,01,115,018","031,14,01,111,02,15,02,13,02,15,01,115,018","031,14,01,18,03,18,01,120,02,14,018","027,112,02,13,02,15,01,12,01,13,02,16,01,19,02,14,018","020,113,01,14,01,112,01,11,02,13,02,15,02,114,019","06,16,03,118,01,11,01,12,01,119,01,16,02,12,01,112,018","06,16,03,114,05,120,01,16,01,13,02,12,02,17,01,11,01,11,018","05,117,012,18,01,111,01,16,01,13,02,12,01,112,018","01,116,017,18,01,127,02,16,01,13,018","06,17,02,13,016,123,01,112,01,111,018","06,16,03,13,016,112,01,14,01,130,018","06,16,022,112,01,16,03,11,02,12,02,11,03,11,02,12,02,11,02,12,02,11,018","036,14,02,14,02,15,03,11,02,11,03,11,03,11,02,11,03,11,03,11,02,11,03,11,03,11,02,11,018","034,16,01,15,01,16,03,11,02,11,03,11,03,11,02,11,03,11,03,11,02,11,018","034,13,01,144,06,12,010","034,13,01,144,06,12,010","034,119,03,11,02,11,03,11,03,11,02,11,03,11,03,11,02,11,06,12,010","034,111,01,17,03,11,02,11,03,11,03,11,02,11,03,11,03,11,02,11,06,12,010","034,12,01,116,03,11,02,12,02,11,02,12,02,12,02,11,02,12,02,11,04,13,01,12,01,11,06","034,12,01,14,01,16,02,133,01,13,01,16,06","034,11,02,14,01,12,01,13,02,13,03,11,02,12,02,11,03,11,02,11,03,11,03,11,02,14,01,11,01,13,02,11,06","034,110,01,18,03,11,02,11,03,11,03,11,02,11,03,11,03,11,02,16,01,16,06","034,119,03,11,02,11,03,11,03,11,02,11,03,11,03,11,02,14,01,11,01,14,01,11,06","034,110,02,139,01,11,01,13,02,11,06","034,148,03,12,01,16,06","034,119,03,11,02,11,03,11,02,11,03,11,03,11,02,11,04,13,01,12,01,11,06","034,119,03,11,02,11,03,11,03,11,02,11,03,11,03,11,02,11,06,12,010","034,120,01,12,02,12,02,12,01,12,02,12,02,12,01,12,02,11,06,12,010","034,18,01,139,06,12,010","034,119,03,11,02,12,02,11,03,11,02,11,03,11,03,11,02,11,06,12,010","034,114,02,13,03,11,02,11,03,11,03,11,02,11,03,11,03,11,02,11,07,11,010","034,114,02,13,03,11,02,11,03,11,03,11,02,11,03,11,03,11,02,11,07,11,010","035,113,02,132,07,11,010","089,11,02,11,01,11,05","088,16,06","089,12,01,12,06","089,12,09","089,13,08","089,13,03,11,04","090,12,02,14,02","089,19,02","089,19,02","089,13,02,14,02","089,13,08","084,18,08","084,11,01,18,06","084,110,06","084,110,06","084,13,01,16,06","082,11,01,13,01,15,07","081,15,02,16,06","081,16,01,16,06","088,16,06","088,16,06","088,16,06","091,13,06","0100","0100"];
+ const m=rle.map(row=>{
+  const out=[];
+  for(const token of row.split(',')){
+   const v=token[0]==='1'?1:0;
+   const n=Number(token.slice(1));
+   for(let i=0;i<n;i++)out.push(v);
   }
- };
- const carveH=(x1,x2,y,w=3)=>{
-  const a=Math.min(x1,x2),b=Math.max(x1,x2),r=Math.floor(w/2);
-  for(let x=a;x<=b;x++)for(let yy=y-r;yy<=y+r;yy++)if(x>0&&yy>0&&x<MW-1&&yy<MH-1)m[yy][x]=0;
- };
- const carveV=(x,y1,y2,w=3)=>{
-  const a=Math.min(y1,y2),b=Math.max(y1,y2),r=Math.floor(w/2);
-  for(let y=a;y<=b;y++)for(let xx=x-r;xx<=x+r;xx++)if(xx>0&&y>0&&xx<MW-1&&y<MH-1)m[y][xx]=0;
- };
-
- // Original Mode is a hand-built approximation of the supplied Level 0
- // floor-plan image. The large shapes and dead-end branches follow the
- // reference rather than using the normal generated maze.
- //
- // LEFT: small entrance -> gridded room -> CENTRAL block
- carveH(1,9,30,5);
- carveRect(8,23,13,13);
-
- // CENTRAL: large irregular block.
- carveRect(20,27,34,18);
- carveRect(30,38,24,9);
- carveRect(42,37,12,16);
-
- // UPPER: tall block rising from the central area.
- carveRect(31,10,17,19);
- carveRect(36,7,9,6);
- carveRect(37,3,7,5);
- carveH(38,42,10,5);
-
- // RIGHT: small square chamber and the long lower-right branch.
- carveRect(54,38,10,9);
- carveRect(58,46,8,12);
- carveRect(62,50,10,8);
-
- // LOWER CENTRAL section.
- carveRect(37,45,18,10);
-
- // Connect the major sections exactly at their narrow junctions.
- carveH(19,22,30,5);
- carveH(47,54,42,5);
- carveV(61,42,50,5);
- carveH(53,62,51,5);
- carveH(48,58,49,5);
-
- // Re-create the distinctive dead-end/corner branches visible in the image.
- // Leftmost dead end.
- carveH(1,8,30,3);
- // Top dead end.
- carveV(40,3,10,3);
- // Right-side dead end into the small square.
- carveH(54,63,42,3);
- // Bottom-right dead end.
- carveV(63,51,58,3);
-
- // A few fixed internal walls create the large-room / corridor structure
- // visible in the reference without turning it back into a random maze.
- for(let y=26;y<=34;y++)if(y!==30)m[y][25]=1;
- for(let y=27;y<=39;y++)if(y!==31&&y!==36)m[y][34]=1;
- for(let x=40;x<=52;x++)if(x!==45&&x!==49)m[36][x]=1;
- for(let x=42;x<=52;x++)if(x!==47)m[48][x]=1;
- for(let y=40;y<=49;y++)if(y!==42&&y!==46)m[y][53]=1;
-
- // Re-open the important junctions so the whole floor-plan stays connected.
- carveH(19,23,30,5);
- carveH(31,38,30,3);
- carveH(47,54,42,5);
- carveV(61,42,51,5);
- carveH(53,63,51,3);
- carveV(63,51,58,3);
-
- startCell={x:3,y:30};
-
- // Exits are placed at dead-end corners/branches of the supplied layout:
- // far-left entrance, top tip, right chamber tip, and bottom-right tip.
+  return out;
+ });
+ MW=100; MH=100;
+ startCell={x:50,y:48};
  exitCells=[
-  {x:2,y:30},
-  {x:40,y:3},
-  {x:63,y:42},
-  {x:63,y:57}
+  {x:57,y:4},
+  {x:4,y:50},
+  {x:80,y:50},
+  {x:84,y:89}
  ];
- for(const ex of exitCells)m[ex.y][ex.x]=0;
+ for(const ex of exitCells){
+  for(let yy=-1;yy<=1;yy++)for(let xx=-1;xx<=1;xx++){
+   const X=ex.x+xx,Y=ex.y+yy;
+   if(X>=0&&X<MW&&Y>=0&&Y<MH)m[Y][X]=0;
+  }
+ }
  exitCell=exitCells[0];
  return m;
 }
