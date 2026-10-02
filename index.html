@@ -596,30 +596,25 @@ function setupOriginalMechanics(m){
  // Winding ledge route from the wooden door to Exit 2 on the far right.
  // Each segment is only one map cell wide, producing the thin-ledge feel
  // from the supplied reference rather than a checkerboard floor.
- // The Pitfalls use a thin one-cell-wide GRID of ledges, matching the
- // reference layout rather than one winding path. Every ledge is only one
- // map tile wide, with regular gaps of void between the grid lines.
- const ledgeRows=[54,60,66,72];
- const ledgeCols=[132,138,144,150];
+ // The Pitfalls are a dense grid of very thin ledges. The visible safe
+ // strip is 1/4 of a tile wide, with twice the previous number of grid lines.
+ const ledgeRows=[51,54,57,60,63,66,69,72];
+ const ledgeCols=[132,135,138,141,144,147,150];
  const carveLedge=(x,y)=>{
   if(x<0||y<0||x>=MW||y>=MH)return;
   m[y][x]=0;
   originalPitCells.delete(x+','+y);
   originalPitLedgeCells.add(x+','+y);
  };
- // Entry from the door into the grid.
- for(let x=128;x<=132;x++)carveLedge(x,59);
- // Horizontal grid lines.
- for(const y of ledgeRows){
-  for(let x=132;x<=150;x++)carveLedge(x,y);
- }
- // Vertical grid lines.
- for(const x of ledgeCols){
-  for(let y=54;y<=72;y++)carveLedge(x,y);
- }
- // Short final approach to Exit 2.
- for(let y=72;y<=60;y--)carveLedge(150,y);
+ // Entry from the locked door into the grid.
+ for(let x=128;x<=132;x++)carveLedge(x,60);
+ for(const y of ledgeRows)for(let x=132;x<=150;x++)carveLedge(x,y);
+ for(const x of ledgeCols)for(let y=51;y<=72;y++)carveLedge(x,y);
+ for(let y=72;y>=60;y--)carveLedge(150,y);
  carveLedge(150,60);
+ // Keep the entrance sealed until the key is used.
+ m[59][127]=1;
+ originalDoorCell={x:127,y:59};
 
  // Exit 2 is on the right edge of the Pitfalls, exactly where the reference
  // places it. Exit 1 is on the bottom edge for the lower route.
@@ -1418,6 +1413,17 @@ function atExit(x,y){
  }
  return false;
 }
+function constrainOriginalLedge(x,y){
+ if(!originalMode)return [x,y];
+ const cx=Math.floor(x),cy=Math.floor(y);
+ if(!originalPitLedgeAt(cx,cy))return [x,y];
+ const lx=x-cx,ly=y-cy;
+ const h=originalPitLedgeAt(cx-1,cy)||originalPitLedgeAt(cx+1,cy);
+ const v=originalPitLedgeAt(cx,cy-1)||originalPitLedgeAt(cx,cy+1);
+ if(h&&Math.abs(ly-.5)>.125)y=cy+.5;
+ if(v&&Math.abs(lx-.5)>.125)x=cx+.5;
+ return [x,y];
+}
 function move(dt){
  // Resolve crouch state before movement/camera calculations so it applies immediately.
  crouching=crouchHeld||crouchToggle;
@@ -1442,8 +1448,11 @@ function move(dt){
  const baseSpeed=exhaustedBase?BASE_SPEED*.8:BASE_SPEED;
  const sp=baseSpeed*(crouching?.38:1)*(sprinting?SPRINT_MULTIPLIER:1),ca=Math.cos(pa),sa=Math.sin(pa);
  const dx=(ca*f-sa*s)*sp*dt,dy=(sa*f+ca*s)*sp*dt,r=.2;
- if(!wall(Math.floor(px+dx+r*Math.sign(dx)),Math.floor(py)))px+=dx;
- if(!wall(Math.floor(px),Math.floor(py+dy+r*Math.sign(dy))))py+=dy;
+ let nx=px,ny=py;
+ if(!wall(Math.floor(px+dx+r*Math.sign(dx)),Math.floor(py)))nx+=dx;
+ if(!wall(Math.floor(px),Math.floor(py+dy+r*Math.sign(dy))))ny+=dy;
+ [nx,ny]=constrainOriginalLedge(nx,ny);
+ px=nx;py=ny;
  if(gameMode==="pool"){const targetFloor=poolFloorAt(px,py);pz=0}
  // Ladder pieces are picked up by walking into them. F/INTERACT still works,
  // but contact pickup means the player does not need to stop on an exact pixel.
@@ -1983,9 +1992,22 @@ function render(){
     const wx=px+floorCos*floorDepth;
     const wy=py+floorSin*floorDepth;
     let ct=gameMode==="pool"?poolFloorTexture(wx,wy):carpetTexture(wx,wy);
-    if(originalMode&&originalPitAt(Math.floor(wx),Math.floor(wy))){
-     const pulse=18+8*Math.sin(performance.now()*.002+wx*2.1+wy);
-     ct=[pulse,pulse*.8,pulse*.58];
+    if(originalMode){
+     const cx=Math.floor(wx),cy=Math.floor(wy);
+     if(originalPitAt(cx,cy)){
+      const pulse=18+8*Math.sin(performance.now()*.002+wx*2.1+wy);
+      ct=[pulse,pulse*.8,pulse*.58];
+     }else if(originalPitLedgeAt(cx,cy)){
+      // Only the center 1/4 of a tile is visible as a safe ledge.
+      const lx=wx-cx,ly=wy-cy;
+      const horizontal=originalPitLedgeAt(cx-1,cy)||originalPitLedgeAt(cx+1,cy);
+      const vertical=originalPitLedgeAt(cx,cy-1)||originalPitLedgeAt(cx,cy+1);
+      const onStrip=(horizontal&&Math.abs(ly-.5)<=.125)||(vertical&&Math.abs(lx-.5)<=.125);
+      if(!onStrip){
+       const pulse=18+8*Math.sin(performance.now()*.002+wx*2.1+wy);
+       ct=[pulse,pulse*.8,pulse*.58];
+      }
+     }
     }
     const depthFade=Math.max(.36,1-Math.max(0,floorDepth-FOG_START)/(RENDER_DISTANCE-FOG_START)*.60);
     const light=Math.max(.55,1-floorDepth*.018)*depthFade;
