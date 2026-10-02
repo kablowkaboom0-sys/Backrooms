@@ -99,6 +99,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <button class="diff" data-size="31">MEDIUM</button>
 <button class="diff" data-size="41">HARD</button>
 <button class="diff" id="originalModeBtn" data-original="1">LEVEL 0 ORIGINAL MODE</button>
+<button class="diff" id="robloxModeBtn" data-roblox="1">ROBLOX BACKROOMS</button>
 <button class="diff" id="poolOriginalModeBtn" data-pool-original="1">POOL ROOMS ORIGINAL MODE</button>
 <button id="backModes">BACK TO GAME MODE</button>
 </div>
@@ -181,6 +182,9 @@ let cluePathCellX=-1,cluePathCellY=-1;
 let entities=[];
 let difficultySize=41;
 let originalMode=false;
+let robloxMode=false;
+let robloxArrowCells=[];
+let robloxExitCell=null;
 let originalRoomZones=[];
 let poolOriginalMode=false;
 let poolOriginalDarkRooms=[];
@@ -332,6 +336,126 @@ addEventListener('gamepaddisconnected',e=>{
 
 
 function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
+function makeRobloxBackroomsMap(){
+ const m=Array.from({length:MH},()=>Array(MW).fill(1));
+ robloxArrowCells=[];
+ robloxExitCell={x:140,y:117};
+
+ const carve=(x,y)=>{
+  if(x>0&&y>0&&x<MW-1&&y<MH-1)m[y][x]=0;
+ };
+ const rect=(x1,y1,x2,y2)=>{
+  for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)carve(x,y);
+ };
+ const h=(x1,x2,y,w=1)=>{
+  for(let x=x1;x<=x2;x++)for(let oy=-w;oy<=w;oy++)carve(x,y+oy);
+ };
+ const v=(x,y1,y2,w=1)=>{
+  for(let y=y1;y<=y2;y++)for(let ox=-w;ox<=w;ox++)carve(x+ox,y);
+ };
+ const corridor=(x1,y1,x2,y2,w=1)=>{
+  let x=x1,y=y1;
+  while(x!==x2){x+=Math.sign(x2-x);for(let oy=-w;oy<=w;oy++)carve(x,y+oy);}
+  while(y!==y2){y+=Math.sign(y2-y);for(let ox=-w;ox<=w;ox++)carve(x+ox,y);}
+ };
+ const room=(x1,y1,x2,y2)=>{
+  rect(x1,y1,x2,y2);
+  // keep the outer wall closed; callers add openings afterward
+  for(let x=x1;x<=x2;x++){m[y1][x]=1;m[y2][x]=1;}
+  for(let y=y1;y<=y2;y++){m[y][x1]=1;m[y][x2]=1;}
+ };
+
+ // Large, irregular Lobby footprint: broad central halls with many short
+ // branches and dead ends, following the published map's maze-like shape.
+ room(8,8,42,32);
+ room(48,7,83,28);
+ room(91,8,122,34);
+ room(126,8,147,27);
+ room(8,39,31,68);
+ room(38,37,72,63);
+ room(79,39,111,70);
+ room(118,39,147,69);
+ room(7,76,35,116);
+ room(43,76,69,111);
+ room(77,78,105,119);
+ room(113,77,147,116);
+
+ // Main spine and large connecting halls.
+ corridor(25,32,25,40,2);
+ corridor(55,28,55,38,2);
+ corridor(102,34,102,41,2);
+ corridor(133,27,133,40,2);
+ corridor(31,53,39,53,2);
+ corridor(71,52,81,52,2);
+ corridor(110,55,119,55,2);
+ corridor(22,68,22,77,2);
+ corridor(52,62,52,77,2);
+ corridor(91,70,91,79,2);
+ corridor(130,68,130,78,2);
+
+ // Characteristic offset/branching walls.
+ h(14,28,21,1); v(14,21,31,1);
+ h(31,40,49,47,1); v(31,40,52,1);
+ h(58,65,16,1); v(65,16,28,1);
+ h(72,82,25,1); v(72,14,25,1);
+ h(94,106,19,1); v(94,19,31,1);
+ h(111,119,29,1); v(119,15,29,1);
+ h(12,25,54,1); v(25,45,61,1);
+ h(44,57,48,1); v(57,39,55,1);
+ h(83,96,59,1); v(96,44,68,1);
+ h(101,114,48,1); v(101,48,63,1);
+ h(122,137,59,1); v(122,43,59,1);
+ h(14,27,94,1); v(27,82,106,1);
+ h(48,62,94,1); v(62,80,105,1);
+ h(81,96,102,1); v(81,87,102,1);
+ h(117,132,96,1); v(132,81,108,1);
+
+ // Lots of smaller dead-end rooms/alcoves, giving the map its cramped
+ // labyrinth character without using file cabinets.
+ room(2,2,15,13); room(17,2,29,13); room(31,2,45,13);
+ room(52,31,65,43); room(69,31,81,43); room(86,31,98,43);
+ room(103,31,116,43); room(121,31,136,43);
+ room(33,66,46,77); room(58,64,72,75); room(104,63,118,76);
+ room(4,104,18,120); room(29,101,42,119); room(67,108,81,121);
+ room(101,104,114,121); room(132,105,150,121);
+
+ // Cut purposeful doorways between the enclosed sections.
+ const openings=[
+  [25,32],[55,28],[102,34],[133,27],[31,53],[38,53],[71,52],[81,52],
+  [110,55],[119,55],[22,68],[22,76],[52,63],[52,76],[91,70],[91,78],
+  [130,69],[130,77],
+  [25,21],[31,47],[65,25],[72,25],[94,28],[119,25],
+  [25,54],[57,48],[96,59],[101,55],[122,59],[27,94],[62,94],
+  [81,102],[132,96],
+  [14,13],[29,13],[45,13],[52,31],[65,31],[81,31],[98,31],[116,31],[136,31],
+  [46,77],[72,64],[104,63],[18,104],[42,101],[67,108],[114,104],[132,105]
+ ];
+ openings.forEach(([x,y])=>carve(x,y));
+
+ // Spawn/Base-0 area: broad safe room at the lower-left, with a clear
+ // opening into the labyrinth.
+ rect(8,84,24,100);
+ corridor(24,92,27,92,2);
+ const spawn={x:15,y:92};
+ startCell=spawn;
+
+ // Exit corridor at the far upper/right end. The green-sign doorway is
+ // represented by the final open cell and arrow trail.
+ corridor(133,59,140,59,2);
+ corridor(140,59,140,117,2);
+ corridor(140,117,146,117,2);
+ carve(140,117);
+
+ // Brown directional arrows: route through major junctions toward the exit.
+ robloxArrowCells=[
+  {x:27,y:92,a:0},{x:31,y:53,a:Math.PI/2},{x:52,y:53,a:0},
+  {x:71,y:52,a:Math.PI/2},{x:91,y:70,a:0},{x:110,y:55,a:Math.PI/2},
+  {x:130,y:69,a:0},{x:140,y:59,a:Math.PI/2},{x:140,y:82,a:Math.PI/2},
+  {x:140,y:103,a:Math.PI/2},{x:140,y:115,a:0}
+ ];
+ return m;
+}
+
 function makeMap(){
  seed=72631;const m=Array.from({length:MH},()=>Array(MW).fill(1));
  function carve(x,y){
@@ -855,6 +979,45 @@ function originalInteract(){
   }
  }
 }
+function drawRobloxObjects(){
+ if(!robloxMode||!gameStarted)return;
+ const project=(cell)=>{
+  const dx=cell.x+.5-px,dy=cell.y+.5-py,dist=Math.hypot(dx,dy);
+  if(dist<.2||dist>RENDER_DISTANCE)return null;
+  let da=Math.atan2(dy,dx)-pa;
+  while(da>Math.PI)da-=Math.PI*2;
+  while(da<-Math.PI)da+=Math.PI*2;
+  if(Math.abs(da)>currentFOV*.62)return null;
+  const center=W/2+(Math.tan(da)/Math.tan(currentFOV/2))*(W/2);
+  const sx=Math.max(0,Math.min(W-1,Math.floor(center)));
+  if(dist>=depthBuffer[sx])return null;
+  return {center,dist};
+ };
+ for(const a of robloxArrowCells){
+  const p=project(a); if(!p)continue;
+  const h=Math.max(4,Math.min(15,H/p.dist*.18));
+  const w=Math.max(4,h*.9);
+  const y=H/2+h*.42;
+  g.save();g.translate(p.center,y);g.rotate(a.a-pa);
+  g.fillStyle='rgba(92,58,24,.96)';
+  g.beginPath();
+  g.moveTo(-w*.48,-h*.12);g.lineTo(w*.18,-h*.12);
+  g.lineTo(w*.18,-h*.42);g.lineTo(w*.52,0);
+  g.lineTo(w*.18,h*.42);g.lineTo(w*.18,h*.12);g.lineTo(-w*.48,h*.12);
+  g.closePath();g.fill();g.restore();
+ }
+ const ex=project(robloxExitCell);
+ if(ex){
+  const h=Math.max(10,Math.min(48,H/ex.dist*1.15)),w=Math.max(10,h*.7);
+  const top=H/2-h*.55,bottom=top+h;
+  g.save();
+  g.fillStyle='rgba(25,75,30,.95)';g.fillRect(ex.center-w/2,top,w,h*.16);
+  g.fillStyle='rgba(205,235,190,.98)';g.font=Math.max(5,Math.min(11,h*.2))+'px monospace';
+  g.textAlign='center';g.fillText('EXIT',ex.center,top+h*.13);
+  g.strokeStyle='rgba(20,35,20,.9)';g.lineWidth=Math.max(1,w*.07);g.strokeRect(ex.center-w/2,bottom-h*.84,w,h*.84);
+  g.restore();
+ }
+}
 function drawOriginalObjects(){
  if(!originalMode||!gameStarted)return;
 
@@ -1295,6 +1458,11 @@ function poolFloorTexture(x,y){
  ];
 }
 function findExit(){
+ if(robloxMode){
+  exitCell=robloxExitCell||{x:140,y:117};
+  exitCells=[exitCell];
+  return;
+ }
  if(poolOriginalMode){
   exitCells=poolOriginalExitCells;
   exitCell=exitCells[0]||{x:1,y:1};
@@ -1357,7 +1525,7 @@ function rebuildLevel0CeilingLights(){
  }
 }
 function reset(){
- map=poolOriginalMode?makeOriginalPoolMap():(gameMode==="pool"?makePoolMap():(originalMode?makeOriginalMap():makeMap()));findExit();
+ map=poolOriginalMode?makeOriginalPoolMap():(robloxMode?makeRobloxBackroomsMap():(gameMode==="pool"?makePoolMap():(originalMode?makeOriginalMap():makeMap())));findExit();
  if(poolOriginalMode)updatePoolOriginalObjective();
  if(originalMode)updateOriginalObjective();
  rebuildLevel0CeilingLights();
@@ -1419,7 +1587,7 @@ function spawnEntities(){
  entities=[];
  // Original Mode currently has no entities. Keep the map completely empty
  // of enemies while its layout, routes, and spawn points are being built.
- if(originalMode||poolOriginalMode)return;
+ if(originalMode||poolOriginalMode||robloxMode)return;
  if(playMode==="peaceful")return;
  const count=entityCountForSize(MW);
  // Build a pool of valid corridor cells away from the player's start.
@@ -1574,10 +1742,10 @@ function wall(x,y){
  return map[y][x]===1;
 }
 function startGame(size){
- MW=poolOriginalMode?150:(gameMode==="pool"?(size===21?90:size===31?110:130):(originalMode?152:size));
- MH=poolOriginalMode?120:(gameMode==="pool"?MW:(originalMode?127:size));
+ MW=poolOriginalMode?150:(robloxMode?152:(gameMode==="pool"?(size===21?90:size===31?110:130):(originalMode?152:size)));
+ MH=poolOriginalMode?120:(robloxMode?127:(gameMode==="pool"?MW:(originalMode?127:size)));
  difficultySize=size;
- startCell=gameMode==="pool"?{x:1,y:1}:{x:1,y:1};
+ startCell=robloxMode?{x:15,y:92}:gameMode==="pool"?{x:1,y:1}:{x:1,y:1};
  gameStarted=true;
  document.getElementById('startScreen').style.display='none';
  document.getElementById('objectivePanel').style.display='none';
@@ -1586,7 +1754,7 @@ function startGame(size){
  document.getElementById('interactBtn').style.display=originalMode?'block':'none';
  document.getElementById('crouchBtn').style.display=originalMode?'block':'none';
  document.getElementById('originalObjective').style.display=(originalMode||poolOriginalMode)?'block':'none';
- document.getElementById('title').textContent=poolOriginalMode?"BACKROOMS // POOL ROOMS // ORIGINAL":gameMode==="pool"?"BACKROOMS // POOL ROOMS":(originalMode?"BACKROOMS // LEVEL 0 // ORIGINAL":"BACKROOMS // LEVEL 0");
+ document.getElementById('title').textContent=poolOriginalMode?"BACKROOMS // POOL ROOMS // ORIGINAL":robloxMode?"BACKROOMS // ROBLOX // THE LOBBY":gameMode==="pool"?"BACKROOMS // POOL ROOMS":(originalMode?"BACKROOMS // LEVEL 0 // ORIGINAL":"BACKROOMS // LEVEL 0");
  reset();
 }
 function atExitWallCell(x,y){return originalMode&&exitCells.some(e=>x===e.x&&y===e.y)}
@@ -2318,6 +2486,7 @@ function render(){
  g.putImageData(img,0,0);
  drawClueArrows();
  drawOriginalObjects();
+ drawRobloxObjects();
  drawEntities();
  drawEntityGlitch(performance.now());
  drawStaminaVision();
@@ -2411,6 +2580,8 @@ document.querySelectorAll('#modeChoices .mode').forEach(btn=>btn.onclick=()=>{
  if(originalBtn)originalBtn.style.display=gameMode==="level0"?'block':'none';
  const poolOriginalBtn=document.getElementById('poolOriginalModeBtn');
  if(poolOriginalBtn)poolOriginalBtn.style.display=gameMode==="pool"?'block':'none';
+ const robloxBtn=document.getElementById('robloxModeBtn');
+ if(robloxBtn)robloxBtn.style.display=gameMode==="level0"?'block':'none';
  document.getElementById('modeChoices').style.display='none';
  document.getElementById('horrorChoices').style.display='flex';
  document.getElementById('startSub').textContent=gameMode==="pool"?'POOL ROOMS // CHOOSE MODE':'LEVEL 0 // CHOOSE MODE';
@@ -2579,13 +2750,16 @@ document.querySelector('#aspectButtons button[data-aspect="native"]').classList.
 let last=performance.now(),acc=0;
 document.querySelectorAll('.diff').forEach(btn=>btn.onclick=()=>{
  if(btn.dataset.poolOriginal){
-  originalMode=false;poolOriginalMode=true;
+  originalMode=false;robloxMode=false;poolOriginalMode=true;
+  startGame(75);
+ }else if(btn.dataset.roblox){
+  originalMode=false;poolOriginalMode=false;robloxMode=true;
   startGame(75);
  }else if(btn.dataset.original){
-  poolOriginalMode=false;originalMode=true;
+  poolOriginalMode=false;robloxMode=false;originalMode=true;
   startGame(75);
  }else{
-  originalMode=false;
+  originalMode=false;poolOriginalMode=false;robloxMode=false;
   startGame(+btn.dataset.size);
  }
 });
