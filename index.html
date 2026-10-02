@@ -2591,9 +2591,10 @@ function render(){
     const localX=wx-tileX;
     const localY=wy-tileY;
 
-    const seamX=localX<.025||localX>.975;
-    const seamY=localY<.025||localY>.975;
-    const seam=(seamX||seamY)?-18:0;
+    // Keep the finer Level 0 ceiling grid visible at every distance.
+    const seamX=localX<.045||localX>.955;
+    const seamY=localY<.045||localY>.955;
+    const seam=(seamX||seamY)?-32:0;
     const tileNoise=hash(tileX*31,tileY*47)*3-1.5;
 
     // Fixtures are part of the ceiling plane, so they retain correct
