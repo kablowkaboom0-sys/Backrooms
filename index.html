@@ -85,12 +85,13 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <button class="diff" data-size="21">EASY</button>
 <button class="diff" data-size="31">MEDIUM</button>
 <button class="diff" data-size="41">HARD</button>
+<button class="diff" id="originalModeBtn" data-original="1">ORIGINAL MODE</button>
 <button id="backModes">BACK TO LEVELS</button>
 </div>
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v12</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v13</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div>
 <button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -148,7 +149,7 @@ function getRenderFOV(){
  return Math.max(Math.PI/6,Math.min(Math.PI*.9,fov));
 }
 let MW=41,MH=41;
-let seed=72631,map,exitCell,px,py,pa,startTime,finished=false,paused=false,sensitivity=.004;
+let seed=72631,map,exitCell,exitCells=[],px,py,pa,startTime,finished=false,paused=false,sensitivity=.004;
 let gameStarted=false;
 let playerHealth=100,lastRegen=0;
 let playerStamina=100,lastStaminaUpdate=0;
@@ -163,6 +164,7 @@ let cluePath=[];
 let cluePathCellX=-1,cluePathCellY=-1;
 let entities=[];
 let difficultySize=41;
+let originalMode=false;
 let gameMode="level0";
 let playMode="horror";
 let startCell={x:1,y:1};
@@ -293,6 +295,82 @@ function makeMap(){
  }
  carve(1,1);return m;
 }
+function makeOriginalMap(){
+ const m=Array.from({length:MH},()=>Array(MW).fill(1));
+ const carveRect=(x,y,w,h)=>{
+  for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++){
+   if(xx>0&&yy>0&&xx<MW-1&&yy<MH-1)m[yy][xx]=0;
+  }
+ };
+ const carveH=(x1,x2,y)=>{
+  for(let x=Math.min(x1,x2);x<=Math.max(x1,x2);x++)for(let oy=-1;oy<=1;oy++){
+   if(x>0&&y+oy>0&&x<MW-1&&y+oy<MH-1)m[y+oy][x]=0;
+  }
+ };
+ const carveV=(x,y1,y2)=>{
+  for(let y=Math.min(y1,y2);y<=Math.max(y1,y2);y++)for(let ox=-1;ox<=1;ox++){
+   if(x+ox>0&&y>0&&x+ox<MW-1&&y<MH-1)m[y][x+ox]=0;
+  }
+ };
+
+ // Fixed floor plan based on the supplied Level 0 map:
+ // left grid room -> large central section -> upper section,
+ // right chamber -> long lower-right branch.
+ carveRect(5,22,16,14);
+ carveRect(20,23,31,23);
+ carveRect(28,8,17,17);
+ carveRect(50,27,10,10);
+ carveRect(54,36,9,21);
+ carveRect(61,47,12,9);
+ carveRect(44,45,12,9);
+
+ // Main connections.
+ carveH(20,27,29);
+ carveH(44,50,31);
+ carveV(54,35,47);
+ carveH(57,67,51);
+ carveH(39,50,45);
+
+ // Left spawn corridor.
+ carveH(1,5,29);
+
+ // Add room-like internal wall patterns to mimic the reference layout.
+ for(let x=8;x<=19;x+=3)for(let y=23;y<=34;y+=3){
+  if((x+y)%6!==0)m[y][x]=1;
+ }
+ for(let x=23;x<=48;x+=5){
+  if(x!==38)for(let y=26;y<=43;y+=5)m[y][x]=1;
+ }
+ for(let y=12;y<=22;y+=4){
+  for(let x=30;x<=43;x+=5)if((x+y)%10!==0)m[y][x]=1;
+ }
+ for(let y=29;y<=35;y+=3)for(let x=52;x<=58;x+=3)m[y][x]=1;
+ for(let y=40;y<=53;y+=4)for(let x=56;x<=61;x+=3)m[y][x]=1;
+
+ // Re-open the main corridors after the decorative wall pattern.
+ carveH(20,28,29);
+ carveH(43,51,31);
+ carveV(54,35,48);
+ carveH(57,67,51);
+ carveH(39,50,45);
+ carveH(1,5,29);
+
+ // Player spawn is the small left-side entrance shown on the map.
+ startCell={x:2,y:29};
+
+ // Multiple exits are deliberately placed in different sections of the
+ // original-style floor plan.
+ exitCells=[
+  {x:43,y:10},
+  {x:58,y:31},
+  {x:70,y:51},
+  {x:47,y:52}
+ ];
+ for(const e of exitCells)m[e.y][e.x]=0;
+ exitCell=exitCells[0];
+ return m;
+}
+
 function poolCellType(x,y){
  if(gameMode!=="pool"||!poolRoomType[y]||poolRoomType[y][x]===undefined)return 0;
  return poolRoomType[y][x];
@@ -420,6 +498,10 @@ function poolFloorTexture(x,y){
  ];
 }
 function findExit(){
+ if(originalMode){
+  exitCell=exitCells[0];
+  return;
+ }
  const sx=startCell.x,sy=startCell.y;const d=Array.from({length:MH},()=>Array(MW).fill(-1)),q=[[sx,sy]];d[sy][sx]=0;let far=[sx,sy];
  for(let i=0;i<q.length;i++){const [x,y]=q[i];
   if(d[y][x]>d[far[1]][far[0]])far=[x,y];
@@ -429,9 +511,10 @@ function findExit(){
   }
  }
  exitCell={x:far[0],y:far[1]};
+ exitCells=[exitCell];
 }
 function reset(){
- map=gameMode==="pool"?makePoolMap():makeMap();findExit();
+ map=gameMode==="pool"?makePoolMap():(originalMode?makeOriginalMap():makeMap());findExit();
  ceilingLights=[];
  if(gameMode!=="pool"){
   for(let y=1;y<MH-1;y++)for(let x=1;x<MW-1;x++){
@@ -464,8 +547,11 @@ function drawDevMap(){
  }
  // Start marker.
  mctx.fillStyle='#4aa3ff';mctx.fillRect(startCell.x*cs+.2*cs,startCell.y*cs+.2*cs,.6*cs,.6*cs);
- // Exit marker.
- mctx.fillStyle='#fff';mctx.fillRect(exitCell.x*cs+.08*cs,exitCell.y*cs+.08*cs,.84*cs,.84*cs);
+ // Exit markers.
+ for(const ex of exitCells){
+  mctx.fillStyle='#fff';
+  mctx.fillRect(ex.x*cs+.08*cs,ex.y*cs+.08*cs,.84*cs,.84*cs);
+ }
  // Player marker.
  const ptx=px*cs,pty=py*cs;
  mctx.fillStyle='#e33';mctx.beginPath();mctx.arc(ptx,pty,Math.max(3,cs*.35),0,Math.PI*2);mctx.fill();
@@ -640,14 +726,16 @@ function regenHealth(now){
 
 function wall(x,y){return x<0||y<0||x>=MW||y>=MH||map[y][x]===1}
 function startGame(size){
- MW=gameMode==="pool"?(size===21?90:size===31?110:130):size;
- MH=MW;difficultySize=size;
- startCell=gameMode==="pool"?{x:1,y:1}:{x:1,y:1};gameStarted=true;
+ MW=gameMode==="pool"?(size===21?90:size===31?110:130):(originalMode?75:size);
+ MH=gameMode==="pool"?MW:(originalMode?59:size);
+ difficultySize=size;
+ startCell=gameMode==="pool"?{x:1,y:1}:{x:1,y:1};
+ gameStarted=true;
  document.getElementById('startScreen').style.display='none';
- document.getElementById('title').textContent=gameMode==="pool"?"BACKROOMS // POOL ROOMS":"BACKROOMS // LEVEL 0";
+ document.getElementById('title').textContent=gameMode==="pool"?"BACKROOMS // POOL ROOMS":(originalMode?"BACKROOMS // LEVEL 0 // ORIGINAL":"BACKROOMS // LEVEL 0");
  reset();
 }
-function atExit(x,y){return x===exitCell.x&&y===exitCell.y}
+function atExit(x,y){return exitCells.some(e=>x===e.x&&y===e.y)}
 function move(dt){
  // Physical gamepad sticks mirror the two mobile joysticks.
  const gx=gamepadMoveX, gy=gamepadMoveY;
@@ -682,7 +770,14 @@ function finish(){
 }
 function devToExit(){
  if(finished)return;
- const ex=exitCell.x+.5,ey=exitCell.y+.5;
+ let target=exitCell;
+ if(originalMode){
+  target=exitCells.reduce((best,e)=>{
+   const db=Math.hypot(e.x+.5-px,e.y+.5-py),bb=Math.hypot(best.x+.5-px,best.y+.5-py);
+   return db<bb?e:best;
+  },exitCells[0]);
+ }
+ const ex=target.x+.5,ey=target.y+.5;
  const vx=ex-px,vy=ey-py,len=Math.hypot(vx,vy)||1;
  // Place the player in the corridor just outside the exit cell, facing the door.
  const stand=0.72;
@@ -1234,7 +1329,7 @@ function render(){
   const cam=(x/W-.5)*2;
   const ra=pa+Math.atan(cam*Math.tan(currentFOV/2));
   const rx=Math.cos(ra),ry=Math.sin(ra);
-  let mx=Math.floor(px),my=Math.floor(py),side=0,hitExit=false,dist=RENDER_DISTANCE+1;
+  let mx=Math.floor(px),my=Math.floor(py),side=0,hitExit=false,hitExitCell=null,dist=RENDER_DISTANCE+1;
   const ddx=Math.abs(1/(rx||1e-9)),ddy=Math.abs(1/(ry||1e-9));
   const sx=rx<0?-1:1,sy=ry<0?-1:1;
   let sdx=rx<0?(px-mx)*ddx:(mx+1-px)*ddx;
@@ -1244,11 +1339,11 @@ function render(){
    if(sdx<sdy){dist=sdx;sdx+=ddx;mx+=sx;side=0}
    else{dist=sdy;sdy+=ddy;my+=sy;side=1}
    if(wall(mx,my))break;
-   if(atExit(mx,my)){hitExit=true;break}
+   if(atExit(mx,my)){hitExit=true;hitExitCell={x:mx,y:my};break}
   }
 
   if(hitExit){
-   const ex=exitCell.x+.5-px,ey=exitCell.y+.5-py;
+   const ex=hitExitCell.x+.5-px,ey=hitExitCell.y+.5-py;
    dist=Math.max(.05,ex*rx+ey*ry);
   }
   dist=Math.max(.05,dist*Math.cos(ra-pa));
@@ -1267,7 +1362,7 @@ function render(){
   for(let y=top;y<bottom;y++){
    let r,gc,b;
    if(hitExit){
-    const ex=exitCell.x+.5,ey=exitCell.y+.5;
+    const ex=hitExitCell.x+.5,ey=hitExitCell.y+.5;
     let da=Math.atan2(ey-py,ex-px)-pa;
     while(da>Math.PI)da-=Math.PI*2;
     while(da<-Math.PI)da+=Math.PI*2;
@@ -1426,7 +1521,15 @@ document.querySelector('#ratioButtons button[data-ratio="native"]').classList.ad
 document.querySelector('#aspectButtons button[data-aspect="native"]').classList.add('active');
 
 let last=performance.now(),acc=0;
-document.querySelectorAll('.diff').forEach(btn=>btn.onclick=()=>startGame(+btn.dataset.size));
+document.querySelectorAll('.diff').forEach(btn=>btn.onclick=()=>{
+ if(btn.dataset.original){
+  originalMode=true;
+  startGame(75);
+ }else{
+  originalMode=false;
+  startGame(+btn.dataset.size);
+ }
+});
 
 function loop(now){
  pollGamepad();
