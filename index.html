@@ -20,7 +20,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 .staminaLabel{font-size:10px;margin-bottom:3px}
 .staminaBar{height:10px;border:1px solid rgba(255,255,255,.45);background:#120e0a}
 #staminaFill{height:100%;width:100%;background:#d5d0b5;transition:width .08s,background .15s}
-#staminaText{font-size:10px;margin-top:3px;opacity:.75}
+#staminaText{font-size:10px;margin-top:3px;opacity:.75}#balanceUI{position:absolute;top:174px;left:12px;width:150px;opacity:.9;letter-spacing:1px;display:none}.balanceLabel{font-size:10px;margin-bottom:3px}.balanceBar{height:10px;border:1px solid rgba(255,255,255,.45);background:#120e0a}.balanceBar #balanceFill{height:100%;width:50%;background:#d5d0b5;transition:width .08s}#balanceText{font-size:10px;margin-top:3px;opacity:.75}
 #pauseBtn{position:absolute;top:34px;right:12px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#ddd;border:1px solid #777;font:12px monospace}
 #devBtn{position:absolute;top:34px;right:142px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#fff;border:1px solid #777;font:12px monospace}
 #mapBtn{position:absolute;top:34px;right:78px;pointer-events:auto;padding:7px 11px;background:#17120c;color:#fff;border:1px solid #777;font:12px monospace}
@@ -67,7 +67,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 .knob{position:absolute;width:44px;height:44px;left:32px;top:32px;border-radius:50%;background:rgba(220,200,130,.25);border:1px solid rgba(255,255,255,.25)}
 #moveStick{left:22px;bottom:24px}
 #lookStick{right:22px;bottom:24px}
-#run{position:absolute;right:60px;bottom:155px;width:64px;height:40px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(0,0,0,.2);color:#ddd;font:12px monospace;pointer-events:auto}
+#run{position:absolute;right:60px;bottom:155px;width:64px;height:40px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(0,0,0,.2);color:#ddd;font:12px monospace;pointer-events:auto}#interactBtn{position:absolute;right:136px;bottom:155px;width:78px;height:40px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(0,0,0,.2);color:#ddd;font:12px monospace;pointer-events:auto;display:none}
 #originalObjective{position:absolute;top:168px;left:12px;max-width:260px;display:none;opacity:.72;font-size:10px;line-height:1.35;letter-spacing:1px;color:#eee;text-shadow:1px 1px #000}
 #gamepadStatus{position:absolute;bottom:8px;right:9px;opacity:.38;font-size:9px;letter-spacing:1px}
 @media(pointer:coarse){#touch{display:block}#hint{display:none}}
@@ -100,7 +100,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <div id="title">BACKROOMS // LEVEL 0</div>
 <div id="timer">00:00.0</div><div id="version">v23</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
-<div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div><div id="originalObjective"></div>
+<div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div><div id="balanceUI"><div class="balanceLabel">BALANCE</div><div class="balanceBar"><div id="balanceFill"></div></div><div id="balanceText">CENTER</div></div><div id="originalObjective"></div>
 <button id="objectiveBtn">OBJECTIVE</button><button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
 <div id="cross"></div>
 <div id="hint">WASD / ARROWS TO MOVE • MOUSE OR Q/E TO LOOK • FIND THE EXIT</div>
@@ -140,7 +140,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <div id="touch">
 <div class="stick" id="moveStick"><div class="knob"></div></div>
 <div class="stick" id="lookStick"><div class="knob"></div></div>
-<button id="run">RUN</button>
+<button id="run">RUN</button><button id="interactBtn">INTERACT</button>
 </div>
 <script>
 'use strict';
@@ -176,7 +176,14 @@ let originalMode=false;
 let originalRoomZones=[];
 let originalLadderPieces=[];
 let originalLadderCollected=0;
+let originalLadderFixed=false;
+let originalLadderClimbed=false;
+let originalLadderCell=null;
 let originalKeyCell=null;
+let originalInteractQueued=false;
+let originalPitCrossed=false;
+let originalBalance=0;
+let originalLeanInput=0;
 let originalHasKey=false;
 let originalDoorCell=null;
 let originalDoorOpen=false;
@@ -361,6 +368,13 @@ function setupOriginalMechanics(m){
  originalDoorCell=null;
  originalPitfallTriggered=false;
  originalLowerRoute=false;
+ originalLadderFixed=false;
+ originalLadderClimbed=false;
+ originalLadderCell=null;
+ originalInteractQueued=false;
+ originalPitCrossed=false;
+ originalBalance=0;
+ originalLeanInput=0;
  originalPitCells=new Set();
 
  const inZone=(x,y,z)=>x>=z.x1&&x<=z.x2&&y>=z.y1&&y<=z.y2;
