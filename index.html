@@ -1700,9 +1700,14 @@ function poolWallTexture(x,y){
 function poolFloorTexture(x,y){
  // Blue pool water for flooded chambers, pale non-slip tile for dry areas.
  const depth=poolWaterAt(x,y);
+ // Pool Rooms floor tiles: twice the previous grid density.
+ const floorTileSize=.5;
+ const floorTileX=Math.floor(x/floorTileSize);
+ const floorTileY=Math.floor(y/floorTileSize);
+ const lx=x-floorTileX*floorTileSize;
+ const ly=y-floorTileY*floorTileSize;
+ const grout=(lx<.022||ly<.022)?-24:0;
  const tx=Math.floor(x*5),ty=Math.floor(y*5);
- const lx=x-Math.floor(x),ly=y-Math.floor(y);
- const grout=(lx<.035||ly<.035)?-24:0;
  const n=texNoise(tx*.71,ty*.83)*4;
 
  if(depth>.01){
@@ -2672,7 +2677,7 @@ function render(){
     const wx=px+floorCos*floorDepth;
     const wy=py+floorSin*floorDepth;
     // Pool Rooms use a denser floor grid; Level 0 keeps its normal carpet texture.
-    let ct=gameMode==="pool"?poolFloorTexture(wx*2,wy*2):carpetTexture(wx,wy);
+    let ct=gameMode==="pool"?poolFloorTexture(wx,wy):carpetTexture(wx,wy);
     if(originalMode){
      const cx=Math.floor(wx),cy=Math.floor(wy);
      if(originalPitAt(cx,cy)){
