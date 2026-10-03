@@ -1,15 +1,17 @@
 # Backrooms HTML5
 
-A browser-based pixelated Backrooms prototype inspired by the low-resolution aesthetic of retro/indie Backrooms games.
+A self-contained browser-based Backrooms game.
 
 ## Play
-- **WASD / Arrow keys:** move
-- **Q / E:** turn
-- **Mouse/touch drag:** look
-- **Shift / RUN:** sprint
+
+https://st1.vercel.app
+
+## Controls
+
+- WASD / Arrow keys: move
+- Q / E: turn
+- Mouse/touch drag: look
+- Shift / RUN: sprint
 - Touch buttons appear on phones/tablets.
 
-The renderer uses a small internal framebuffer and nearest-neighbor scaling to keep the intentionally chunky individual-pixel look.
-
-## Run
-Open `index.html` on a static web host such as GitHub Pages.
+The game is contained in the repository's HTML5 client and does not require external game sites or emulator services.
