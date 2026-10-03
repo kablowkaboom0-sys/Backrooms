@@ -112,7 +112,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v37</div><div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
+<div id="timer">00:00.0</div><div id="version">v36</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div><div id="balanceUI"><div class="balanceLabel">BALANCE</div><div class="balanceBar"><div id="balanceFill"></div></div><div id="balanceText">CENTER</div></div><div id="originalObjective"></div>
 <button id="objectiveBtn">OBJECTIVE</button><button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
 <div id="cross"></div>
@@ -255,6 +256,106 @@ function objectDistanceStyle(dist){
 }
 const keys={};
 const depthBuffer=new Float32Array(W);
+let gamepadIndex=null;
+let gamepadConnected=false;
+let gamepadMoveX=0,gamepadMoveY=0,gamepadLookX=0;
+const GAMEPAD_DEADZONE=.16;
+const gamepadStatus=document.getElementById('gamepadStatus');
+
+function applyGamepadDeadzone(v){
+ const a=Math.abs(v);
+ if(a<GAMEPAD_DEADZONE)return 0;
+ return Math.sign(v)*Math.min(1,(a-GAMEPAD_DEADZONE)/(1-GAMEPAD_DEADZONE));
+}
+function pollGamepad(){
+ const pads=navigator.getGamepads?navigator.getGamepads():[];
+ let gp=gamepadIndex!=null?pads[gamepadIndex]:null;
+ if(!gp){gp=Array.from(pads).find(p=>p);gamepadIndex=gp?gp.index:null;}
+ gamepadConnected=!!gp;
+ if(!gp){
+  gamepadMoveX=gamepadMoveY=gamepadLookX=0;
+  if(gamepadStatus)gamepadStatus.textContent='GAMEPAD: OFF';
+  return;
+ }
+ // Left stick = movement. Right stick horizontal = looking.
+ gamepadMoveX=applyGamepadDeadzone(gp.axes[0]||0);
+ gamepadMoveY=applyGamepadDeadzone(gp.axes[1]||0);
+ gamepadLookX=applyGamepadDeadzone(gp.axes[2]||0);
+
+ // D-pad navigates whichever menu is currently visible.
+ const up=gp.buttons[12]?.pressed||false;
+ const down=gp.buttons[13]?.pressed||false;
+ const left=gp.buttons[14]?.pressed||false;
+ const right=gp.buttons[15]?.pressed||false;
+ const a=gp.buttons[0]?.pressed||false; // A = select
+ const b=gp.buttons[1]?.pressed||false; // B = back
+ const x=gp.buttons[2]?.pressed||false; // X = DEV
+ const start=gp.buttons[9]?.pressed||false; // START = pause
+ const sprint=gp.buttons[7]?.pressed||false; // R2 / RT = sprint
+
+ if(gamepadStatus)gamepadStatus.textContent='GAMEPAD: ON';
+ const edge={
+  up:up&&!gpPrev.up,down:down&&!gpPrev.down,left:left&&!gpPrev.left,right:right&&!gpPrev.right,
+  a:a&&!gpPrev.a,b:b&&!gpPrev.b,x:x&&!gpPrev.x,start:start&&!gpPrev.start
+ };
+ gpPrev={up,down,left,right,a,b,x,start};
+ keys.shift=sprint;
+ updateGamepadMenu(up,down,left,right,edge);
+ handleGamepadGameplay(edge);
+}
+let gpPrev={up:false,down:false,left:false,right:false,a:false,b:false,x:false,start:false};
+let gpMenuIndex=0;
+let gpMenuItems=[];
+function visibleMenuItems(){
+ const start=document.getElementById('startScreen');
+ if(start.style.display!=='none'){
+  if(document.getElementById('modeChoices').style.display!=='none')return [...document.querySelectorAll('#modeChoices .mode')];
+  if(document.getElementById('horrorChoices').style.display!=='none')return [...document.querySelectorAll('#horrorChoices .mode'),document.getElementById('backLevelsFromModes')];
+  return [...document.querySelectorAll('#difficultyChoices .diff'),document.getElementById('backModes')];
+ }
+ if(document.getElementById('panel').style.display==='flex'){
+  return [document.getElementById('resume'),document.getElementById('clueToggle'),...document.querySelectorAll('#ratioButtons button')];
+ }
+ if(document.getElementById('mapPanel').style.display==='flex')return [document.getElementById('mapClose')];
+ if(document.getElementById('end').style.display==='flex')return [document.getElementById('retry')];
+ return [];
+}
+function updateGamepadMenu(up,down,left,right,edge){
+ const items=visibleMenuItems();
+ if(!items.length)return;
+ if(items!==gpMenuItems){gpMenuItems=items;gpMenuIndex=0;}
+ let changed=false;
+ if(edge.up){gpMenuIndex=(gpMenuIndex-1+items.length)%items.length;changed=true;}
+ if(edge.down){gpMenuIndex=(gpMenuIndex+1)%items.length;changed=true;}
+ if(changed)items[gpMenuIndex].focus();
+ if(edge.a)items[gpMenuIndex].click();
+ if(edge.b){
+  if(document.getElementById('mapPanel').style.display==='flex')closeMap();
+  else if(document.getElementById('panel').style.display==='flex')togglePause();
+  else if(document.getElementById('horrorChoices').style.display!=='none')document.getElementById('backLevelsFromModes').click();
+  else if(document.getElementById('difficultyChoices').style.display!=='none')document.getElementById('backModes').click();
+ }
+}
+function handleGamepadGameplay(edge){
+ if(!gameStarted)return;
+ if(edge.start)togglePause();
+ if(edge.b&&document.getElementById('mapPanel').style.display==='flex')closeMap();
+ if(edge.a){
+  if(document.getElementById('mapPanel').style.display==='flex')closeMap();
+  else if(document.getElementById('panel').style.display==='flex')document.getElementById('resume').click();
+  else if(!paused&&!finished)openMap();
+ }
+ if(edge.x&&!paused&&!finished)devToExit();
+}
+
+addEventListener('gamepadconnected',e=>{gamepadIndex=e.gamepad.index;gamepadConnected=true});
+addEventListener('gamepaddisconnected',e=>{
+ if(e.gamepad.index===gamepadIndex){
+  gamepadIndex=null;gamepadConnected=false;
+  gamepadMoveX=gamepadMoveY=gamepadLookX=0;
+ }
+});
+
 
 function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
 const ROBLOX_MAP_SCALE=6;
@@ -1579,6 +1680,14 @@ function atExit(x,y){
 function move(dt){
  // Resolve crouch state before movement/camera calculations so it applies immediately.
  crouching=crouchHeld||crouchToggle;
+ // Physical gamepad sticks mirror the two mobile joysticks.
+ const gx=gamepadMoveX, gy=gamepadMoveY;
+ if(Math.abs(gx)>.01||Math.abs(gy)>.01){
+  keys.a=gx<-.18;keys.d=gx>.18;
+  keys.w=gy<-.18;keys.s=gy>.18;
+ }
+ if(Math.abs(gamepadLookX)>.01&&!paused&&!finished){if(originalPitActive())originalLeanInput=gamepadLookX;else pa+=gamepadLookX*.045;}
+
  if(paused||finished)return;
  let f=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0);
  let s=(keys.d?1:0)-(keys.a?1:0);
