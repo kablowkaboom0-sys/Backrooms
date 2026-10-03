@@ -1607,20 +1607,25 @@ function wall(x,y){
  if(originalDoorOpen&&originalDoorCell&&x===originalDoorCell.x&&y===originalDoorCell.y)return false;
  return map[y][x]===1;
 }
-function canStandAt(x,y,r=.18){
- const k=.70710678*r;
- const samples=[
-  [0,0],[r,0],[-r,0],[0,r],[0,-r],
-  [k,k],[k,-k],[-k,k],[-k,-k]
- ];
- for(const [ox,oy] of samples){
-  if(wall(Math.floor(x+ox),Math.floor(y+oy)))return false;
+function canStandAt(x,y,r=.20){
+ // Circle-vs-cell collision keeps the player inside the exact walkable map.
+ const minX=Math.floor(x-r)-1,maxX=Math.floor(x+r)+1;
+ const minY=Math.floor(y-r)-1,maxY=Math.floor(y+r)+1;
+ for(let cy=minY;cy<=maxY;cy++){
+  for(let cx=minX;cx<=maxX;cx++){
+   if(!wall(cx,cy))continue;
+   const nearestX=Math.max(cx,Math.min(x,cx+1));
+   const nearestY=Math.max(cy,Math.min(y,cy+1));
+   const dx=x-nearestX,dy=y-nearestY;
+   if(dx*dx+dy*dy<r*r)return false;
+  }
  }
  return true;
 }
 function moveWithCollision(dx,dy){
+ // Small substeps prevent fast movement from tunneling through walls.
  const dist=Math.hypot(dx,dy);
- const steps=Math.max(1,Math.ceil(dist/.025));
+ const steps=Math.max(1,Math.ceil(dist/.018));
  const sx=dx/steps,sy=dy/steps;
  for(let i=0;i<steps;i++){
   const nx=px+sx;
@@ -1701,10 +1706,7 @@ function move(dt){
  const baseSpeed=exhaustedBase?BASE_SPEED*.8:BASE_SPEED;
  const sp=baseSpeed*(crouching?.38:1)*(sprinting?SPRINT_MULTIPLIER:1),ca=Math.cos(pa),sa=Math.sin(pa);
  const dx=(ca*f-sa*s)*sp*dt,dy=(sa*f+ca*s)*sp*dt,r=.2;
- let nx=px,ny=py;
- if(!wall(Math.floor(px+dx+r*Math.sign(dx)),Math.floor(py)))nx+=dx;
- if(!wall(Math.floor(px),Math.floor(py+dy+r*Math.sign(dy))))ny+=dy;
- px=nx;py=ny;
+ moveWithCollision(dx,dy);
  if(gameMode==="pool"){const targetFloor=poolFloorAt(px,py);pz=0}
  if(poolOriginalMode){
   const cx=Math.floor(px),cy=Math.floor(py);
