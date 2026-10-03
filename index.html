@@ -105,14 +105,14 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090806;fon
 <button class="diff" type="button" data-size="31">MEDIUM</button>
 <button class="diff" type="button" data-size="41">HARD</button>
 <button class="diff" id="originalModeBtn" type="button" data-original="1">LEVEL 0 ORIGINAL MODE</button>
-<button class="diff" id="robloxModeBtn" type="button" data-roblox="1">ROBLOX BACKROOMS</button>
+<button class="diff" id="robloxModeBtn" type="button" data-roblox="1">ROBLOX LABYRINTH</button>
 <button class="diff" id="poolOriginalModeBtn" type="button" data-pool-original="1">POOL ROOMS ORIGINAL MODE</button>
 <button id="backModes" type="button">BACK TO GAME MODE</button>
 </div>
 </div>
 <div id="ui">
 <div id="title">BACKROOMS // LEVEL 0</div>
-<div id="timer">00:00.0</div><div id="version">v35</div><div id="gamepadStatus">GAMEPAD: OFF</div>
+<div id="timer">00:00.0</div><div id="version">v36</div><div id="gamepadStatus">GAMEPAD: OFF</div>
 <div id="healthUI"><div class="healthLabel">HEALTH</div><div class="healthBar"><div id="healthFill"></div></div><div id="healthText">100 / 100</div></div>
 <div id="staminaUI"><div class="staminaLabel">STAMINA</div><div class="staminaBar"><div id="staminaFill"></div></div><div id="staminaText">100 / 100</div></div><div id="balanceUI"><div class="balanceLabel">BALANCE</div><div class="balanceBar"><div id="balanceFill"></div></div><div id="balanceText">CENTER</div></div><div id="originalObjective"></div>
 <button id="objectiveBtn">OBJECTIVE</button><button id="devBtn">DEV</button><button id="mapBtn">MAP</button><button id="pauseBtn">PAUSE</button>
@@ -839,50 +839,9 @@ function originalInteract(){
  }
 }
 function drawRobloxObjects(){
+ // Roblox mode is intentionally just the labyrinth map.
+ // No quest markers, arrows, floating instructions, or exit sign are drawn.
  if(!robloxMode||!gameStarted)return;
- const project=(cell)=>{
-  const dx=cell.x+.5-px,dy=cell.y+.5-py,dist=Math.hypot(dx,dy);
-  if(dist<.2||dist>RENDER_DISTANCE)return null;
-  let da=Math.atan2(dy,dx)-pa;
-  while(da>Math.PI)da-=Math.PI*2;
-  while(da<-Math.PI)da+=Math.PI*2;
-  if(Math.abs(da)>currentFOV*.62)return null;
-  const center=W/2+(Math.tan(da)/Math.tan(currentFOV/2))*(W/2);
-  const sx=Math.max(0,Math.min(W-1,Math.floor(center)));
-  if(dist>=depthBuffer[sx])return null;
-  return {center,dist,...objectDistanceStyle(dist)};
- };
- for(const a of robloxArrowCells){
-  const p=project(a); if(!p)continue;
-  const h=Math.max(4,Math.min(15,H/p.dist*.18));
-  const w=Math.max(4,h*.9);
-  const y=H/2+h*.42;
-  const style=objectDistanceStyle(p.dist);
-  g.save();
-  g.globalAlpha=style.alpha;
-  g.filter='brightness('+style.brightness.toFixed(3)+')';
-  g.translate(p.center,y);g.rotate(a.a-pa);
-  g.fillStyle='rgba(92,58,24,.96)';
-  g.beginPath();
-  g.moveTo(-w*.48,-h*.12);g.lineTo(w*.18,-h*.12);
-  g.lineTo(w*.18,-h*.42);g.lineTo(w*.52,0);
-  g.lineTo(w*.18,h*.42);g.lineTo(w*.18,h*.12);g.lineTo(-w*.48,h*.12);
-  g.closePath();g.fill();g.restore();
- }
- const ex=project(robloxExitCell);
- if(ex){
-  const h=Math.max(10,Math.min(48,H/ex.dist*1.15)),w=Math.max(10,h*.7);
-  const top=H/2-h*.55,bottom=top+h;
-  const style=objectDistanceStyle(ex.dist);
-  g.save();
-  g.globalAlpha=style.alpha;
-  g.filter='brightness('+style.brightness.toFixed(3)+')';
-  g.fillStyle='rgba(25,75,30,.95)';g.fillRect(ex.center-w/2,top,w,h*.16);
-  g.fillStyle='rgba(205,235,190,.98)';g.font=Math.max(5,Math.min(11,h*.2))+'px monospace';
-  g.textAlign='center';g.fillText('EXIT',ex.center,top+h*.13);
-  g.strokeStyle='rgba(20,35,20,.9)';g.lineWidth=Math.max(1,w*.07);g.strokeRect(ex.center-w/2,bottom-h*.84,w,h*.84);
-  g.restore();
- }
 }
 function drawOriginalObjects(){
  if(!originalMode||!gameStarted)return;
