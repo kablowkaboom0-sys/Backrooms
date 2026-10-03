@@ -363,6 +363,95 @@ const ROBLOX_MAP_W=1080, ROBLOX_MAP_H=798;
 // Exact thin-wall trace generated from the user's supplied Roblox Backrooms
 // map. One map cell is 1/6 of the normal Level 0 wall thickness.
 const ROBLOX_TRACE_B64="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";
+function densifyRobloxWalls(m){
+ // The supplied Roblox map trace has several large open areas where wall
+ // segments were lost during tracing. Add deterministic, irregular wall
+ // segments to those open areas while preserving a connected start-to-exit
+ // route.
+ const Wm=ROBLOX_MAP_W,Hm=ROBLOX_MAP_H;
+ const sx=14,sy=129,ex=179,ey=129;
+ const inside=(x,y)=>x>2&&y>2&&x<Wm-3&&y<Hm-3;
+ const open=(x,y)=>inside(x,y)&&m[y]?.[x]===0;
+ const nearSpecial=(x,y)=>Math.hypot(x-sx,y-sy)<12||Math.hypot(x-ex,y-ey)<12;
+
+ function hash2(x,y){
+  let n=((x*374761393+y*668265263)>>>0);
+  n=(n^(n>>>13))*1274126177>>>0;
+  n^=n>>>16;
+  return (n>>>0)/4294967296;
+ }
+ function degree(x,y){
+  return (open(x+1,y)?1:0)+(open(x-1,y)?1:0)+(open(x,y+1)?1:0)+(open(x,y-1)?1:0);
+ }
+ function openBox(x,y,r){
+  let n=0;
+  for(let yy=y-r;yy<=y+r;yy++)for(let xx=x-r;xx<=x+r;xx++)if(m[yy]?.[xx]===0)n++;
+  return n;
+ }
+ function connected(){
+  if(!open(sx,sy)||!open(ex,ey))return false;
+  const seen=new Uint8Array(Wm*Hm);
+  const qx=new Int32Array(Wm*Hm),qy=new Int32Array(Wm*Hm);
+  let head=0,tail=0;
+  qx[tail]=sx;qy[tail]=sy;tail++;seen[sy*Wm+sx]=1;
+  while(head<tail){
+   const x=qx[head],y=qy[head++];
+   if(x===ex&&y===ey)return true;
+   const n=[[x+1,y],[x-1,y],[x,y+1],[x,y-1]];
+   for(const p of n){
+    const X=p[0],Y=p[1];
+    if(X<0||Y<0||X>=Wm||Y>=Hm||seen[Y*Wm+X]||m[Y][X]!==0)continue;
+    seen[Y*Wm+X]=1;qx[tail]=X;qy[tail]=Y;tail++;
+   }
+  }
+  return false;
+ }
+
+ // Candidate centers are deliberately spaced so the new walls form rooms,
+ // corners and short branches instead of a noisy wall carpet.
+ const candidates=[];
+ for(let y=6;y<Hm-6;y+=4){
+  for(let x=6;x<Wm-6;x+=4){
+   if(!open(x,y)||nearSpecial(x,y))continue;
+   if(degree(x,y)<3||openBox(x,y,3)<28)continue;
+   candidates.push([x,y]);
+  }
+ }
+ // Deterministic pseudo-shuffle.
+ for(let i=candidates.length-1;i>0;i--){
+  const j=Math.floor(hash2(candidates[i][0],candidates[i][1])* (i+1));
+  [candidates[i],candidates[j]]=[candidates[j],candidates[i]];
+ }
+
+ let accepted=0;
+ for(let ci=0;ci<candidates.length&&accepted<220;ci++){
+  const [cx,cy]=candidates[ci];
+  if(!open(cx,cy)||nearSpecial(cx,cy))continue;
+
+  const horizontal=hash2(cx+91,cy+17)>.5;
+  const dir=horizontal?[1,0]:[0,1];
+  const len=3+Math.floor(hash2(cx*3+7,cy*5+11)*5);
+  const cells=[];
+  let valid=true;
+  for(let k=0;k<len;k++){
+   const x=cx+dir[0]*(k-Math.floor(len/2));
+   const y=cy+dir[1]*(k-Math.floor(len/2));
+   if(!open(x,y)||nearSpecial(x,y)||degree(x,y)<2){valid=false;break;}
+   cells.push([x,y]);
+  }
+  if(!valid)continue;
+
+  // Apply in small batches, then verify the entire route. If a batch closes
+  // the map, undo it and keep searching for another wall segment.
+  for(const [x,y] of cells)m[y][x]=1;
+  if(!connected()){
+   for(const [x,y] of cells)m[y][x]=0;
+   continue;
+  }
+  accepted+=cells.length;
+ }
+}
+
 async function makeRobloxBackroomsMap(){
  let raw=null,lastError=null;
  try{
@@ -1314,6 +1403,7 @@ async function reset(){
    const m=await makeRobloxBackroomsMap();
    if(loadId!==robloxMapLoadId||!gameStarted||!robloxMode||gameMode!=="level0")return;
    map=m;
+   densifyRobloxWalls(map);
    findExit();
    rebuildLevel0CeilingLights();
    px=startCell.x+.5;py=startCell.y+.5;pa=0;pz=0;startTime=performance.now();
